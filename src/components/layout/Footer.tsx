@@ -20,10 +20,12 @@ export function Footer() {
               </span>
             </div>
           </div>
-          <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+          <nav className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-muted-foreground">
             <Link href="/offers" className="hover:text-foreground transition-colors">Offers</Link>
             <Link href="/refer" className="hover:text-foreground transition-colors">Refer</Link>
             <Link href="/contribute" className="hover:text-foreground transition-colors">Contribute</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           </nav>
         </div>
       </div>
