@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="32" height="32">
+  <defs>
+    <linearGradient id="gasGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="22" fill="#0f172a" />
+  <circle cx="50" cy="50" r="38" stroke="url(#gasGrad)" stroke-width="5" stroke-dasharray="16 8" fill="none" />
+  <polygon points="50,22 74,36 74,64 50,78 26,64 26,36" fill="url(#gasGrad)" />
+  <path d="M40 42 L50 32 L60 42 M50 32 L50 60 M42 52 L50 60 L58 52" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <circle cx="50" cy="24" r="3" fill="#10b981" />
+</svg>
