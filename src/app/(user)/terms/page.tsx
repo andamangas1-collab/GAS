@@ -69,7 +69,7 @@ export default function TermsOfServicePage() {
             Commissions are calculated based on approved orders and verified returns policies:
           </p>
           <ul className="list-disc pl-6 space-y-2">
-            <li>Commissions transition from <strong>Pending</strong> to <strong>Approved</strong> after the product's cooling/refund window has elapsed.</li>
+            <li>Commissions transition from <strong>Pending</strong> to <strong>Approved</strong> after the product&apos;s cooling/refund window has elapsed.</li>
             <li>Payout disbursements are processed in accordance with administrative payout cycles to verified UPI/Bank accounts.</li>
             <li>GAS™ reserves the right to hold or audit transactions suspected of fraudulent activity, automated bot traffic, or chargeback disputes.</li>
           </ul>

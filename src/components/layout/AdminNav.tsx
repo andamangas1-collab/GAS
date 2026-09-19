@@ -14,7 +14,8 @@ import {
   Megaphone,
   BarChart3,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  BookOpen
 } from "lucide-react"
 import { GASLogo } from "@/components/branding/GASLogo"
 
@@ -25,6 +26,7 @@ export function AdminNav() {
     { label: "DASHBOARD", href: "/admin/dashboard", icon: LayoutDashboard },
     { label: "USERS", href: "/admin/users", icon: Users },
     { label: "PRODUCTS", href: "/admin/products", icon: Package },
+    { label: "BLOGS", href: "/admin/blogs", icon: BookOpen },
     { label: "ORDERS", href: "/admin/orders", icon: ShoppingCart },
     { label: "REFERRALS", href: "/admin/referrals", icon: Share2 },
     { label: "COMMISSIONS", href: "/admin/commissions", icon: Percent },

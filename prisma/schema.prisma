@@ -151,6 +151,8 @@ model User {
   notifications     Notification[]
   activityLogs      ActivityLog[]
   auditLogs         AuditLog[]
+  blogPosts         BlogPost[]
+  blogShareLogs     BlogShareLog[]
 
   @@index([referralCode])
   @@index([referredBy])
@@ -199,6 +201,7 @@ model Product {
   orderItems      OrderItem[]
   campaignLinks   CampaignProduct[]
   offers          OfferProduct[]
+  blogPosts       BlogPost[]
 
   @@index([slug])
   @@index([status])
@@ -587,4 +590,57 @@ model PasswordResetToken {
   @@index([email])
   @@index([token])
   @@map("password_reset_tokens")
+}
+
+// ============================================================
+// 17. Blogging & Social Viral Engine
+// ============================================================
+
+model BlogPost {
+  id                String         @id @default(cuid())
+  title             String
+  slug              String         @unique
+  excerpt           String         @db.Text
+  content           String         @db.Text
+  coverImage        String?        @map("cover_image")
+  category          String         @default("Affiliate Marketing")
+  tags              String[]       @default([])
+  readTimeMinutes   Int            @default(5) @map("read_time_minutes")
+  isPublished       Boolean        @default(true) @map("is_published")
+  featuredProductId String?        @map("featured_product_id")
+  authorId          String         @map("author_id")
+  viewCount         Int            @default(0) @map("view_count")
+  shareCount        Int            @default(0) @map("share_count")
+  metaTitle         String?        @map("meta_title")
+  metaDescription   String?        @map("meta_description") @db.Text
+  publishedAt       DateTime       @default(now()) @map("published_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  author          User           @relation(fields: [authorId], references: [id])
+  featuredProduct Product?       @relation(fields: [featuredProductId], references: [id], onDelete: SetNull)
+  shareLogs       BlogShareLog[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([isPublished])
+  @@index([publishedAt])
+  @@map("blog_posts")
+}
+
+model BlogShareLog {
+  id         String   @id @default(cuid())
+  postId     String   @map("post_id")
+  userId     String?  @map("user_id")
+  platform   String   // whatsapp, twitter, facebook, linkedin, telegram, copy
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([postId])
+  @@index([userId])
+  @@index([platform])
+  @@map("blog_share_logs")
 }

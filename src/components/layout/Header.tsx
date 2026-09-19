@@ -40,6 +40,7 @@ export function Header() {
 
   const userNavLinks = [
     { label: "HOME", href: "/" },
+    { label: "BLOG", href: "/blog", icon: BookOpen },
     { label: "LEARN", href: "/learn", icon: BookOpen },
     { label: "OFFERS", href: "/offers", icon: ShoppingBag },
     { label: "REFER", href: "/refer", icon: Share2, authOnly: true },
