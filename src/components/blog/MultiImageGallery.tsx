@@ -54,7 +54,7 @@ export function MultiImageGallery({
       <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
         <span className="flex items-center gap-1.5 text-foreground font-bold">
           <Images className="h-4 w-4 text-gas-500" />
-          Visual Gallery &amp; Exhibits
+          Photo Gallery
         </span>
         <span className="font-mono text-[11px]">
           {activeIndex + 1} of {validImages.length}

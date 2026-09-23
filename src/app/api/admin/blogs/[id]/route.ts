@@ -11,6 +11,16 @@ export async function PUT(
     const { id } = params
     const body = await request.json()
 
+    // Fetch existing post to preserve publishedAt date
+    const existing = await prisma.blogPost.findUnique({
+      where: { id },
+    })
+
+    let publishedAt = existing?.publishedAt
+    if (body.isPublished && !existing?.publishedAt) {
+      publishedAt = new Date()
+    }
+
     const updated = await prisma.blogPost.update({
       where: { id },
       data: {
@@ -27,7 +37,7 @@ export async function PUT(
         featuredProductId: body.featuredProductId || null,
         metaTitle: body.metaTitle,
         metaDescription: body.metaDescription,
-        publishedAt: body.isPublished ? new Date() : undefined,
+        publishedAt,
       },
     })
 

@@ -67,7 +67,7 @@ export function BlogBroadcastModal({
   const twitterCopy = `🚀 ${post.title.length > 70 ? post.title.slice(0, 67) + "..." : post.title}\n\n${post.excerpt.length > 110 ? post.excerpt.slice(0, 107) + "..." : post.excerpt}\n\nRead here 👇\n${articleUrl}\n\n${twitterTags.join(" ")}`
 
   // 3. LinkedIn Copy
-  const linkedinCopy = `🌟 Insights for Digital Affiliates & Growth Operators:\n\n"${post.title}"\n\n${post.excerpt}\n\nKey discussion points:\n• Why single-tier transparent compensation outperforms legacy multi-level schemes.\n• Actionable steps to increase conversion velocity.\n• Value-to-Value (V2V) recognition.\n\nRead the full piece on the GAS™ publication:\n${articleUrl}\n\n#AffiliateMarketing #Commerce #CreatorEconomy #GrowthHacking`
+  const linkedinCopy = `🌟 Insights for Digital Affiliates & Growth Operators:\n\n"${post.title}"\n\n${post.excerpt}\n\nKey discussion points:\n• Why single-tier transparent compensation outperforms legacy multi-level schemes.\n• Practical tips to grow your sales and earnings.\n• Value-to-Value (V2V) recognition.\n\nRead the full piece on the GAS™ publication:\n${articleUrl}\n\n#AffiliateMarketing #Commerce #CreatorEconomy #GrowthHacking`
 
   // 4. Telegram Copy
   const telegramCopy = `🔥 *${post.title}*\n\n${post.excerpt}\n\n📖 Read full guide: ${articleUrl}`
@@ -104,16 +104,16 @@ export function BlogBroadcastModal({
         body: JSON.stringify({ webhookUrls: [webhookUrl.trim()] }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to broadcast")
+      if (!res.ok) throw new Error(data.error || "Failed to send article")
 
       toast({
-        title: "Webhook Dispatched!",
-        description: `Article successfully broadcasted to ${webhookUrl}`,
+        title: "Sent Successfully!",
+        description: `Article was sent to ${webhookUrl}`,
       })
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Broadcast Failed",
+        title: "Sharing Failed",
         description: err.message,
       })
     } finally {
@@ -136,14 +136,14 @@ export function BlogBroadcastModal({
         <div className="flex items-center justify-between p-5 border-b border-border/60 bg-muted/20">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gas-500/10 flex items-center justify-center text-gas-500">
-              <Radio className="h-4 w-4" />
+              <Share2 className="h-4 w-4" />
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground">
-                1-Click Social Media Broadcast Studio
+                Share to Social Media in 1 Click
               </h3>
               <p className="text-xs text-muted-foreground line-clamp-1">
-                Broadcasting: &quot;{post.title}&quot;
+                Sharing: &quot;{post.title}&quot;
               </p>
             </div>
           </div>
@@ -211,7 +211,7 @@ export function BlogBroadcastModal({
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
-            <Zap className="h-3.5 w-3.5" /> Webhooks / Auto
+            <Zap className="h-3.5 w-3.5" /> Auto-Post (Webhook)
           </button>
         </div>
 
@@ -221,7 +221,7 @@ export function BlogBroadcastModal({
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <MessageCircle className="h-4 w-4" /> Pre-Formatted WhatsApp Broadcast Message
+                  <MessageCircle className="h-4 w-4" /> Ready-to-Send WhatsApp Message
                 </span>
                 <button
                   type="button"
@@ -357,16 +357,16 @@ export function BlogBroadcastModal({
             <div className="space-y-3">
               <div className="p-3 rounded-xl bg-gas-500/10 border border-gas-500/20 text-xs text-foreground space-y-1">
                 <p className="font-bold flex items-center gap-1 text-gas-600 dark:text-gas-400">
-                  <Zap className="h-3.5 w-3.5" /> Automated Background Syndication
+                  <Zap className="h-3.5 w-3.5" /> Auto-Post to Social Media
                 </p>
                 <p className="text-muted-foreground text-[11px]">
-                  Provide a webhook URL from Make.com, Zapier, n8n, or a custom bot. When dispatched, GAS™ pushes article metadata, cover image, and link payload to automatically post to your connected social channels.
+                  Provide a webhook URL from Make.com, Zapier, or Discord. GAS™ will automatically send this article information to post directly to your social channels.
                 </p>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">
-                  Webhook URL (Make / Zapier / Discord / Telegram):
+                  Webhook URL (Make.com / Zapier / Discord / Telegram):
                 </label>
                 <Input
                   type="url"
@@ -385,11 +385,11 @@ export function BlogBroadcastModal({
               >
                 {isBroadcastingWebhook ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Dispatching Webhooks...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Sending to Social Channels...
                   </>
                 ) : (
                   <>
-                    <Zap className="h-4 w-4" /> Trigger Automated Social Broadcast
+                    <Zap className="h-4 w-4" /> Post to Social Channels via Webhook
                   </>
                 )}
               </Button>

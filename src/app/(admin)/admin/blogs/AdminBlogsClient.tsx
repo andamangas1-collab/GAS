@@ -24,6 +24,7 @@ import {
   MessageCircle,
   Youtube,
   Image as ImageIcon,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,6 +69,27 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
   const [loading, setLoading] = useState(false)
   const [showSocialInputs, setShowSocialInputs] = useState(false)
 
+  // Edit article state
+  const [editingPost, setEditingPost] = useState<AdminBlogPost | null>(null)
+  const [showEditSocialInputs, setShowEditSocialInputs] = useState(false)
+  const [editForm, setEditForm] = useState({
+    title: "",
+    excerpt: "",
+    content: "",
+    category: "Affiliate Strategy",
+    readTimeMinutes: 5,
+    coverImage: "",
+    images: [] as string[],
+    isPublished: true,
+    socialLinks: {
+      twitter: "",
+      linkedin: "",
+      telegram: "",
+      whatsapp: "",
+      youtube: "",
+    },
+  })
+
   // Broadcast modal state
   const [broadcastPost, setBroadcastPost] = useState<AdminBlogPost | null>(null)
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false)
@@ -103,7 +125,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: "Please fill out all required fields (title, excerpt, content).",
+        description: "Please fill out all required fields (title, summary, content).",
       })
       return
     }
@@ -143,16 +165,94 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
 
       toast({
         title: "Article Published!",
-        description: `"${result.data.title}" is now active in the blog system.`,
+        description: `"${result.data.title}" has been saved.`,
       })
 
-      // Prompt to broadcast to socials immediately
+      // Prompt to share to socials immediately
       setBroadcastPost(result.data)
       setIsBroadcastModalOpen(true)
     } catch (err: any) {
       toast({
         variant: "destructive",
         title: "Creation Failed",
+        description: err.message,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStartEdit = (post: AdminBlogPost) => {
+    setIsCreating(false)
+    setEditingPost(post)
+    setEditForm({
+      title: post.title,
+      excerpt: post.excerpt,
+      content: post.content,
+      category: post.category || "Affiliate Strategy",
+      readTimeMinutes: post.readTimeMinutes || 5,
+      coverImage: post.coverImage || "",
+      images: Array.isArray(post.images) ? post.images : [],
+      isPublished: post.isPublished,
+      socialLinks: {
+        twitter: post.socialLinks?.twitter || "",
+        linkedin: post.socialLinks?.linkedin || "",
+        telegram: post.socialLinks?.telegram || "",
+        whatsapp: post.socialLinks?.whatsapp || "",
+        youtube: post.socialLinks?.youtube || "",
+      },
+    })
+    setShowEditSocialInputs(
+      Boolean(
+        post.socialLinks?.twitter ||
+        post.socialLinks?.linkedin ||
+        post.socialLinks?.telegram ||
+        post.socialLinks?.whatsapp ||
+        post.socialLinks?.youtube
+      )
+    )
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingPost(null)
+  }
+
+  const handleUpdatePost = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingPost) return
+
+    if (!editForm.title.trim() || !editForm.excerpt.trim() || !editForm.content.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please fill out all required fields (title, summary, content).",
+      })
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/blogs/${editingPost.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || "Failed to update article")
+
+      setPosts(posts.map((p) => (p.id === editingPost.id ? { ...p, ...result.data } : p)))
+      setEditingPost(null)
+      toast({
+        title: "Article Updated!",
+        description: `"${result.data.title}" has been successfully updated.`,
+      })
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
         description: err.message,
       })
     } finally {
@@ -214,7 +314,10 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         </div>
 
         <Button
-          onClick={() => setIsCreating(!isCreating)}
+          onClick={() => {
+            setIsCreating(!isCreating)
+            setEditingPost(null)
+          }}
           size="sm"
           className="bg-gas-600 hover:bg-gas-700 text-white font-semibold gap-1.5 text-xs h-9 ml-auto shadow-sm"
         >
@@ -228,10 +331,10 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         <Card className="border-gas-500/30 bg-card/90 shadow-2xl">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-gas-500" /> Write Strategic Article
+              <Sparkles className="h-4 w-4 text-gas-500" /> Write New Article
             </CardTitle>
             <CardDescription className="text-xs">
-              Publish guides with multi-image support, social thread syncing, and 1-click multi-channel broadcasting.
+              Publish helpful guides with multiple photos and share them directly across your social media channels.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -283,7 +386,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">
-                  Short Excerpt (SEO Summary) *
+                  Summary (Brief description for search and social sharing) *
                 </label>
                 <textarea
                   required
@@ -321,7 +424,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                 />
               </div>
 
-              {/* Expandable Social Links Feeding Section */}
+              {/* Expandable Social Links Section */}
               <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
                 <button
                   type="button"
@@ -330,7 +433,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                 >
                   <span className="flex items-center gap-1.5 text-gas-600 dark:text-gas-400">
                     <MessageSquare className="h-4 w-4" />
-                    Feed Social Media Discussion Links ({showSocialInputs ? "Hide" : "Expand"})
+                    Add Social Media Discussion Links ({showSocialInputs ? "Hide" : "Expand"})
                   </span>
                   <span className="text-[11px] text-muted-foreground font-normal">
                     Connect X thread, LinkedIn post, Telegram, WhatsApp chat
@@ -450,8 +553,264 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                   disabled={loading}
                   className="bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-10 px-6 shadow-md shadow-gas-600/20"
                 >
-                  {loading ? "Publishing..." : "Save & Launch Article"}
+                  {loading ? "Publishing..." : "Publish Article"}
                 </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Article Modal / Card */}
+      {editingPost && (
+        <Card className="border-gas-500/40 bg-card shadow-2xl ring-1 ring-gas-500/20">
+          <CardHeader className="flex flex-row items-start justify-between pb-3">
+            <div>
+              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Edit className="h-4 w-4 text-gas-500" /> Edit Article
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                Editing: &quot;{editingPost.title}&quot;
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCancelEdit}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdatePost} className="space-y-5">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Article Title *</label>
+                <Input
+                  required
+                  placeholder="Article title..."
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="h-10 text-sm font-semibold"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">Category</label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    className="w-full h-10 px-3 rounded-md bg-background border border-border text-xs text-foreground"
+                  >
+                    <option value="Affiliate Strategy">Affiliate Strategy</option>
+                    <option value="V2V Philosophy">V2V Philosophy</option>
+                    <option value="Growth & Traffic">Growth & Traffic</option>
+                    <option value="Product Updates">Product Updates</option>
+                    <option value="Case Studies">Case Studies</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">Read Time (Minutes)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={editForm.readTimeMinutes}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        readTimeMinutes: parseInt(e.target.value, 10) || 5,
+                      })
+                    }
+                    className="h-10 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Summary (Brief description for search and social sharing) *
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  placeholder="Brief 1-2 sentence summary displayed in social cards and search results..."
+                  value={editForm.excerpt}
+                  onChange={(e) => setEditForm({ ...editForm, excerpt: e.target.value })}
+                  className="w-full p-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
+                />
+              </div>
+
+              {/* Multi-Image Uploader Studio */}
+              <MultiImageUploader
+                images={editForm.images}
+                coverImage={editForm.coverImage}
+                onChange={(imgs) => setEditForm({ ...editForm, images: imgs })}
+                onSetCoverImage={(cover) => setEditForm({ ...editForm, coverImage: cover })}
+                onInsertMarkdown={(snippet) =>
+                  setEditForm({ ...editForm, content: editForm.content + "\n" + snippet })
+                }
+              />
+
+              {/* Content Editor */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Content (Markdown supported: ## Headings, lists, quotes, images) *
+                </label>
+                <textarea
+                  required
+                  rows={10}
+                  placeholder="Write article paragraphs... Use ## for headings and - for bullet points."
+                  value={editForm.content}
+                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                  className="w-full p-3 rounded-md bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
+                />
+              </div>
+
+              {/* Expandable Social Links Section */}
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditSocialInputs(!showEditSocialInputs)}
+                  className="w-full flex items-center justify-between text-xs font-bold text-foreground"
+                >
+                  <span className="flex items-center gap-1.5 text-gas-600 dark:text-gas-400">
+                    <MessageSquare className="h-4 w-4" />
+                    Social Media Discussion Links ({showEditSocialInputs ? "Hide" : "Expand"})
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    Connect X thread, LinkedIn post, Telegram, WhatsApp chat
+                  </span>
+                </button>
+
+                {showEditSocialInputs && (
+                  <div className="pt-3 border-t border-border/50 grid sm:grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Twitter className="h-3 w-3 text-sky-500" /> X (Twitter) Post URL
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://x.com/username/status/..."
+                        value={editForm.socialLinks.twitter}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            socialLinks: { ...editForm.socialLinks, twitter: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Linkedin className="h-3 w-3 text-blue-600" /> LinkedIn Discussion URL
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://www.linkedin.com/feed/update/..."
+                        value={editForm.socialLinks.linkedin}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            socialLinks: { ...editForm.socialLinks, linkedin: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Send className="h-3 w-3 text-sky-400" /> Telegram Discussion Link
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://t.me/channel/123"
+                        value={editForm.socialLinks.telegram}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            socialLinks: { ...editForm.socialLinks, telegram: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <MessageCircle className="h-3 w-3 text-emerald-500" /> WhatsApp Community Link
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://chat.whatsapp.com/..."
+                        value={editForm.socialLinks.whatsapp}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            socialLinks: { ...editForm.socialLinks, whatsapp: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Youtube className="h-3 w-3 text-rose-500" /> YouTube Video Walkthrough URL
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={editForm.socialLinks.youtube}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            socialLinks: { ...editForm.socialLinks, youtube: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isPublished}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, isPublished: e.target.checked })
+                    }
+                    className="rounded border-border text-gas-600 focus:ring-gas-500 h-4 w-4"
+                  />
+                  Published live (Visible to public)
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                    className="text-xs h-10 px-4"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-10 px-6 shadow-md shadow-gas-600/20"
+                  >
+                    {loading ? "Saving Changes..." : "Save Changes"}
+                  </Button>
+                </div>
               </div>
             </form>
           </CardContent>
@@ -464,11 +823,11 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
           <table className="w-full text-left text-xs">
             <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground uppercase font-semibold text-[10px] tracking-wider">
               <tr>
-                <th className="px-4 py-3">Article &amp; Visuals</th>
+                <th className="px-4 py-3">Article &amp; Images</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-center">Telemetry</th>
-                <th className="px-4 py-3 text-center">Broadcast</th>
+                <th className="px-4 py-3 text-center">Views &amp; Activity</th>
+                <th className="px-4 py-3 text-center">Share to Socials</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -496,7 +855,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                           <span className="font-mono">/{post.slug}</span>
                           {post.images && post.images.length > 0 && (
                             <span className="text-gas-600 font-medium">
-                              📷 {post.images.length} photos
+                              📷 {post.images.length} images
                             </span>
                           )}
                         </div>
@@ -542,31 +901,41 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                     </div>
                   </td>
 
-                  {/* 1-Click Social Broadcast Studio trigger */}
+                  {/* 1-Click Social Share trigger */}
                   <td className="px-4 py-3 text-center whitespace-nowrap">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => openBroadcastStudio(post)}
                       className="h-7 px-2.5 text-[11px] font-bold border-gas-500/30 text-gas-600 hover:bg-gas-500/10 gap-1.5 shadow-sm"
-                      title="1-Click Multi-Channel Social Broadcast"
+                      title="Share to Social Media in 1 Click"
                     >
-                      <Radio className="h-3 w-3 text-gas-500 animate-pulse" />
-                      <span>Broadcast</span>
+                      <Share2 className="h-3 w-3 text-gas-500" />
+                      <span>Share</span>
                     </Button>
                   </td>
 
                   <td className="px-4 py-3 text-right whitespace-nowrap space-x-1">
                     <Link href={`/blog/${post.slug}`} target="_blank">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="Preview Article">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Button>
                     </Link>
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => handleStartEdit(post)}
+                      className="h-7 w-7 p-0 text-gas-600 hover:text-gas-700 hover:bg-gas-500/10"
+                      title="Edit Article"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleDeletePost(post.id, post.title)}
                       className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                      title="Delete Article"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

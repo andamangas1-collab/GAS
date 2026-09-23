@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Blog Management | GAS™ Admin",
-  description: "Manage, publish, and monitor articles and viral social telemetry.",
+  description: "Manage, publish, and share articles to social media.",
 }
 
 export default async function AdminBlogsPage() {
@@ -29,10 +29,10 @@ export default async function AdminBlogsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-gas-500" />
-            Blog &amp; Knowledge Management
+            Blog Articles
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Create, edit, and orchestrate high-converting content assets with automatic affiliate link attribution.
+            Create, edit, and manage articles with automatic affiliate link tracking.
           </p>
         </div>
       </div>

@@ -224,15 +224,15 @@ export function SocialShareBar({
         )}
       </Button>
 
-      {/* Affiliate Tag Badge indicator if user has referral code */}
+      {/* Referral Tag Badge indicator if user has referral code */}
       {activeReferralCode && (
         <div className="w-full mt-1.5 pt-1.5 border-t border-border/40 flex items-center justify-between text-[11px] text-gas-600 dark:text-gas-400">
           <span className="inline-flex items-center gap-1">
             <Sparkles className="h-3 w-3" />
-            Affiliate Tracking Active ({activeReferralCode})
+            Your referral code is active ({activeReferralCode})
           </span>
           <span className="text-muted-foreground text-[10px]">
-            Earn commissions on reader conversions
+            You earn commissions if readers make a purchase
           </span>
         </div>
       )}

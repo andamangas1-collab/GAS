@@ -39,21 +39,21 @@ export function SocialDiscussionBar({
     },
     {
       key: "linkedin",
-      label: "Join LinkedIn Debate",
+      label: "Discuss on LinkedIn",
       url: socialLinks.linkedin,
       icon: Linkedin,
       colorClass: "hover:border-blue-600 hover:text-blue-600 hover:bg-blue-600/10",
     },
     {
       key: "telegram",
-      label: "Telegram Group Thread",
+      label: "Telegram Discussion",
       url: socialLinks.telegram,
       icon: Send,
       colorClass: "hover:border-sky-400 hover:text-sky-400 hover:bg-sky-400/10",
     },
     {
       key: "whatsapp",
-      label: "WhatsApp Community Chat",
+      label: "WhatsApp Group",
       url: socialLinks.whatsapp,
       icon: MessageCircle,
       colorClass: "hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10",
@@ -76,11 +76,11 @@ export function SocialDiscussionBar({
       <div className="flex items-center gap-2">
         <MessageSquare className="h-4 w-4 text-gas-500" />
         <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
-          Live Community Discussions
+          Join the Discussion
         </h4>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">
-        This article has live discussion threads across our official social channels. Jump into the debate:
+        Have thoughts or questions about this article? Join the conversation on your favorite platform:
       </p>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
