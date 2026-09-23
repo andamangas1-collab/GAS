@@ -24,6 +24,7 @@ import {
   MessageCircle,
   Twitter,
   Linkedin,
+  Image as ImageIcon,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -292,21 +293,40 @@ export function BlogPostClient({
           {/* Main Article Container */}
           <article className="flex-1 max-w-[72ch] space-y-8 w-full">
             {/* Mobile Collapsible Table of Contents */}
-            <TableOfContents content={post.content} className="lg:hidden" />
+            <TableOfContents content={post.content} variant="mobile" />
 
-            {/* Photo Gallery (if additional images uploaded) */}
-            {galleryImages.length > 0 && (
-              <MultiImageGallery
-                images={galleryImages}
-                title={post.title}
-                className="my-6"
-              />
-            )}
-
-            {/* Editorial Body Content with Rich Markdown Support */}
-            <div className="space-y-6 text-foreground/90 text-[17px] sm:text-[18px] leading-[1.8] font-normal">
+            {/* Editorial Body Content with Rich Markdown Support & Justified Typography */}
+            <div className="space-y-6 text-foreground/90 text-[17px] sm:text-[18px] leading-[1.85] font-normal">
               {renderMarkdownBody(post.content)}
             </div>
+
+            {/* Visual Storyboard & Media Highlights Showcase (Repositioned to editorial break) */}
+            {galleryImages.length > 0 && (
+              <section className="my-10 p-5 sm:p-6 rounded-3xl bg-muted/20 border border-border/80 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-xl bg-gas-500/10 flex items-center justify-center text-gas-600 dark:text-gas-400">
+                      <ImageIcon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">
+                        Visual Storyboard &amp; Media Highlights
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        {galleryImages.length} High-Resolution Strategic Asset{galleryImages.length === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    Visual Evidence
+                  </Badge>
+                </div>
+                <MultiImageGallery
+                  images={galleryImages}
+                  title={post.title}
+                />
+              </section>
+            )}
 
             {/* ============================================================ */}
             {/* FEATURED PRODUCT SOLUTION CTA (High-Converting Hook) */}
@@ -476,8 +496,62 @@ export function BlogPostClient({
             )}
           </article>
 
-          {/* Desktop Sticky Table of Contents Sidebar */}
-          <TableOfContents content={post.content} className="hidden lg:block" />
+          {/* Desktop Sticky Sidebar with TOC + Trending Articles */}
+          <aside className="hidden lg:block w-80 shrink-0 space-y-6 sticky top-24">
+            <TableOfContents content={post.content} variant="desktop" />
+
+            {/* Trending Strategic Reads Mini-Card Feed */}
+            {relatedPosts.length > 0 && (
+              <div className="rounded-3xl border border-border/70 bg-card/60 p-5 backdrop-blur-xl shadow-lg shadow-black/5 space-y-4">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-gas-500" />
+                    Trending Reads
+                  </h4>
+                  <Link
+                    href="/blog"
+                    className="text-[10px] font-semibold text-gas-600 hover:underline flex items-center gap-0.5"
+                  >
+                    View All <ArrowRight className="h-2.5 w-2.5" />
+                  </Link>
+                </div>
+
+                <div className="space-y-3">
+                  {relatedPosts.slice(0, 3).map((rel) => (
+                    <Link
+                      key={rel.id}
+                      href={`/blog/${rel.slug}`}
+                      className="group flex items-start gap-3 rounded-xl p-2 -mx-2 hover:bg-muted/40 transition-colors"
+                    >
+                      {rel.coverImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={rel.coverImage}
+                          alt={rel.title}
+                          className="h-12 w-16 object-cover rounded-lg border border-border shrink-0 shadow-sm"
+                        />
+                      ) : (
+                        <div className="h-12 w-16 rounded-lg bg-gas-500/10 border border-border/80 flex items-center justify-center text-gas-500 shrink-0">
+                          <BookOpen className="h-4 w-4 opacity-50" />
+                        </div>
+                      )}
+                      <div className="min-w-0 space-y-1">
+                        <span className="text-[10px] font-bold text-gas-600 dark:text-gas-400 block truncate uppercase tracking-wider">
+                          {rel.category}
+                        </span>
+                        <h5 className="text-xs font-bold text-foreground group-hover:text-gas-600 transition-colors line-clamp-2 leading-snug">
+                          {rel.title}
+                        </h5>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" /> {rel.readTimeMinutes}m read
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </aside>
         </div>
       </div>
 

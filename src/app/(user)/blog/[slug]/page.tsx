@@ -125,8 +125,8 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
     })
     .catch(() => {})
 
-  // Fetch related articles
-  const relatedPosts = await prisma.blogPost.findMany({
+  // Fetch related articles (same category first, backfill with recent posts if fewer than 4)
+  let relatedPosts = await prisma.blogPost.findMany({
     where: {
       isPublished: true,
       category: post.category,
@@ -144,9 +144,34 @@ export default async function BlogPostPage({ params, searchParams }: Props) {
       clapCount: true,
       publishedAt: true,
     },
-    take: 3,
+    take: 4,
     orderBy: { publishedAt: "desc" },
   })
+
+  if (relatedPosts.length < 4) {
+    const existingIds = [post.id, ...relatedPosts.map((p) => p.id)]
+    const backfill = await prisma.blogPost.findMany({
+      where: {
+        isPublished: true,
+        id: { notIn: existingIds },
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        coverImage: true,
+        images: true,
+        category: true,
+        readTimeMinutes: true,
+        clapCount: true,
+        publishedAt: true,
+      },
+      take: 4 - relatedPosts.length,
+      orderBy: { publishedAt: "desc" },
+    })
+    relatedPosts = [...relatedPosts, ...backfill]
+  }
 
   // Determine active referral code for affiliate tracking
   let activeReferralCode = searchParams?.ref || null

@@ -12,6 +12,7 @@ export interface TocItem {
 interface TableOfContentsProps {
   content: string
   className?: string
+  variant?: "all" | "mobile" | "desktop"
 }
 
 export function parseHeadings(markdown: string): TocItem[] {
@@ -40,7 +41,11 @@ export function parseHeadings(markdown: string): TocItem[] {
   return items
 }
 
-export function TableOfContents({ content, className = "" }: TableOfContentsProps) {
+export function TableOfContents({
+  content,
+  className = "",
+  variant = "all",
+}: TableOfContentsProps) {
   const [items, setItems] = useState<TocItem[]>([])
   const [activeId, setActiveId] = useState<string>("")
   const [isOpenMobile, setIsOpenMobile] = useState(false)
@@ -96,54 +101,59 @@ export function TableOfContents({ content, className = "" }: TableOfContentsProp
     }
   }
 
+  const showMobile = variant === "all" || variant === "mobile"
+  const showDesktop = variant === "all" || variant === "desktop"
+
   return (
     <>
       {/* Mobile Collapsible Dropdown */}
-      <div className="lg:hidden mb-8 rounded-2xl border border-border/80 bg-card/70 p-4 shadow-sm backdrop-blur-md">
-        <button
-          type="button"
-          onClick={() => setIsOpenMobile(!isOpenMobile)}
-          className="w-full flex items-center justify-between text-xs font-bold text-foreground"
-        >
-          <span className="flex items-center gap-2 text-gas-600 dark:text-gas-400">
-            <ListFilter className="h-4 w-4" />
-            Quick Navigation ({items.length} Sections)
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-              isOpenMobile ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+      {showMobile && (
+        <div className={`lg:hidden mb-8 rounded-2xl border border-border/80 bg-card/70 p-4 shadow-sm backdrop-blur-md ${className}`}>
+          <button
+            type="button"
+            onClick={() => setIsOpenMobile(!isOpenMobile)}
+            className="w-full flex items-center justify-between text-xs font-bold text-foreground"
+          >
+            <span className="flex items-center gap-2 text-gas-600 dark:text-gas-400">
+              <ListFilter className="h-4 w-4" />
+              Quick Navigation ({items.length} Sections)
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                isOpenMobile ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
-        {isOpenMobile && (
-          <nav className="mt-3 pt-3 border-t border-border/50 space-y-1 text-xs">
-            {items.map((item) => {
-              const isActive = activeId === item.id
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => scrollToHeading(item.id)}
-                  className={`block w-full text-left py-1.5 px-3 rounded-lg transition-all ${
-                    item.level === 3 ? "pl-6 text-[11px]" : "font-medium"
-                  } ${
-                    isActive
-                      ? "bg-gas-500/15 text-gas-600 dark:text-gas-400 font-bold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                  }`}
-                >
-                  {item.text}
-                </button>
-              )
-            })}
-          </nav>
-        )}
-      </div>
+          {isOpenMobile && (
+            <nav className="mt-3 pt-3 border-t border-border/50 space-y-1 text-xs">
+              {items.map((item) => {
+                const isActive = activeId === item.id
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => scrollToHeading(item.id)}
+                    className={`block w-full text-left py-1.5 px-3 rounded-lg transition-all ${
+                      item.level === 3 ? "pl-6 text-[11px]" : "font-medium"
+                    } ${
+                      isActive
+                        ? "bg-gas-500/15 text-gas-600 dark:text-gas-400 font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                    }`}
+                  >
+                    {item.text}
+                  </button>
+                )
+              })}
+            </nav>
+          )}
+        </div>
+      )}
 
-      {/* Desktop Sticky Sidebar */}
-      <aside className={`hidden lg:block w-72 shrink-0 ${className}`}>
-        <div className="sticky top-24 space-y-4 rounded-3xl border border-border/70 bg-card/60 p-5 backdrop-blur-xl shadow-lg shadow-black/5">
+      {/* Desktop Sticky Box */}
+      {showDesktop && (
+        <div className={`space-y-4 rounded-3xl border border-border/70 bg-card/60 p-5 backdrop-blur-xl shadow-lg shadow-black/5 ${className}`}>
           <div className="flex items-center justify-between pb-3 border-b border-border/60">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-gas-500/10 flex items-center justify-center text-gas-500">
@@ -158,7 +168,7 @@ export function TableOfContents({ content, className = "" }: TableOfContentsProp
             </span>
           </div>
 
-          <nav className="space-y-1 max-h-[calc(100vh-16rem)] overflow-y-auto pr-1 text-xs scrollbar-none">
+          <nav className="space-y-1 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1 text-xs scrollbar-none">
             {items.map((item) => {
               const isActive = activeId === item.id
               return (
@@ -187,7 +197,7 @@ export function TableOfContents({ content, className = "" }: TableOfContentsProp
             })}
           </nav>
         </div>
-      </aside>
+      )}
     </>
   )
 }
