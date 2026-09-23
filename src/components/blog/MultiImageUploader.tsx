@@ -252,59 +252,66 @@ export function MultiImageUploader({
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   {isCover && (
-                    <div className="absolute top-1.5 left-1.5 bg-gas-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow flex items-center gap-1">
-                      <Star className="h-2.5 w-2.5 fill-white" /> Primary Cover
+                    <div className="absolute top-2 left-2 bg-gas-600/90 backdrop-blur-sm text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-white" /> Cover Photo
                     </div>
+                  )}
+
+                  {!isCover && (
+                    <button
+                      type="button"
+                      onClick={() => onSetCoverImage(imgUrl)}
+                      className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 hover:bg-gas-600 text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow flex items-center gap-1"
+                      title="Set as Featured Cover Photo"
+                    >
+                      <Star className="h-2.5 w-2.5" /> Make Cover
+                    </button>
                   )}
                 </div>
 
-                {/* Quick Action Overlay Buttons */}
-                <div className="p-1.5 flex items-center justify-between gap-1 bg-muted/40 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => onSetCoverImage(imgUrl)}
-                    title={isCover ? "Primary Cover Image" : "Set as Cover Image"}
-                    className={`p-1 rounded transition-colors ${
-                      isCover
-                        ? "text-gas-600 font-bold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Star className={`h-3.5 w-3.5 ${isCover ? "fill-gas-600" : ""}`} />
-                  </button>
-
+                {/* Action Bar */}
+                <div className="p-2 flex flex-col gap-1.5 bg-card border-t border-border/60">
                   {onInsertMarkdown && (
-                    <button
+                    <Button
                       type="button"
-                      onClick={() => onInsertMarkdown(`![Visual](${imgUrl})\n`)}
-                      title="Insert into Content Editor"
-                      className="px-1.5 py-0.5 rounded bg-gas-500/10 hover:bg-gas-500/20 text-gas-600 text-[10px] font-semibold"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onInsertMarkdown(`![Photo](${imgUrl})\n`)}
+                      className="w-full text-xs h-7 font-semibold bg-gas-500/10 hover:bg-gas-500/20 text-gas-600 border-gas-500/20 gap-1"
                     >
-                      + Insert
-                    </button>
+                      <Plus className="h-3 w-3" /> Insert into Article
+                    </Button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleCopyTag(imgUrl)}
-                    title="Copy Markdown Image Tag"
-                    className="p-1 rounded text-muted-foreground hover:text-foreground"
-                  >
-                    {copiedUrl === imgUrl ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-500" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  <div className="flex items-center justify-between text-xs pt-0.5 text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTag(imgUrl)}
+                      className="flex items-center gap-1 hover:text-foreground text-[11px] px-1 py-0.5 rounded"
+                      title="Copy Markdown code"
+                    >
+                      {copiedUrl === imgUrl ? (
+                        <>
+                          <Check className="h-3 w-3 text-emerald-500" />
+                          <span className="text-emerald-500">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          <span>Copy Tag</span>
+                        </>
+                      )}
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(imgUrl)}
-                    title="Remove from Article"
-                    className="p-1 rounded text-rose-500/80 hover:text-rose-600 hover:bg-rose-500/10"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(imgUrl)}
+                      className="text-rose-500 hover:text-rose-600 p-1 hover:bg-rose-500/10 rounded transition-colors"
+                      title="Delete Photo"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )

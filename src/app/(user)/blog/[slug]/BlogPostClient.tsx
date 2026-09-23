@@ -34,6 +34,7 @@ import { ClapButton } from "@/components/blog/ClapButton"
 import { SocialDiscussionBar } from "@/components/blog/SocialDiscussionBar"
 import { BlogNewsletterCard } from "@/components/blog/BlogNewsletterCard"
 import { useToast } from "@/hooks/use-toast"
+import { renderMarkdownBody } from "@/lib/format-markdown"
 
 interface BlogPostData {
   id: string
@@ -137,11 +138,16 @@ export function BlogPostClient({
     ? `${origin}/blog/${post.slug}?ref=${referralCode}`
     : `${origin}/blog/${post.slug}`
 
-  // Filter gallery images (excluding cover if already shown in hero)
+  // Filter gallery images (excluding cover if already shown in hero banner)
   const galleryImages: string[] = []
   if (Array.isArray(post.images)) {
     post.images.forEach((img) => {
-      if (img && typeof img === "string" && img.trim() !== "") {
+      if (
+        img &&
+        typeof img === "string" &&
+        img.trim() !== "" &&
+        img !== post.coverImage
+      ) {
         galleryImages.push(img)
       }
     })
@@ -299,188 +305,7 @@ export function BlogPostClient({
 
             {/* Editorial Body Content with Rich Markdown Support */}
             <div className="space-y-6 text-foreground/90 text-[17px] sm:text-[18px] leading-[1.8] font-normal">
-              {post.content.split("\n\n").map((paragraph, index) => {
-                const trimmed = paragraph.trim()
-
-                // Markdown Image: ![caption](url)
-                const imgMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/)
-                if (imgMatch) {
-                  const caption = imgMatch[1]
-                  const imgUrl = imgMatch[2]
-                  return (
-                    <figure
-                      key={index}
-                      className="my-8 rounded-3xl overflow-hidden border border-border/80 bg-muted/20 shadow-md"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imgUrl}
-                        alt={caption || post.title}
-                        className="w-full h-auto object-cover max-h-[520px]"
-                      />
-                      {caption && (
-                        <figcaption className="text-center text-xs text-muted-foreground py-2.5 px-4 italic border-t border-border/40 bg-card/40">
-                          {caption}
-                        </figcaption>
-                      )}
-                    </figure>
-                  )
-                }
-
-                // Headings (H2)
-                if (trimmed.startsWith("## ")) {
-                  const rawText = trimmed
-                    .replace("## ", "")
-                    .replace(/\*\*/g, "")
-                    .replace(/\*/g, "")
-                  const id = rawText
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/(^-|-$)/g, "")
-                  return (
-                    <h2
-                      key={index}
-                      id={id}
-                      className="text-2xl sm:text-3xl font-extrabold text-foreground mt-12 mb-4 tracking-tight border-b border-border/60 pb-3 scroll-mt-28 flex items-center gap-2"
-                    >
-                      {rawText}
-                    </h2>
-                  )
-                }
-
-                // Headings (H3)
-                if (trimmed.startsWith("### ")) {
-                  const rawText = trimmed
-                    .replace("### ", "")
-                    .replace(/\*\*/g, "")
-                    .replace(/\*/g, "")
-                  const id = rawText
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/(^-|-$)/g, "")
-                  return (
-                    <h3
-                      key={index}
-                      id={id}
-                      className="text-xl sm:text-2xl font-bold text-foreground mt-9 mb-3 tracking-tight scroll-mt-28"
-                    >
-                      {rawText}
-                    </h3>
-                  )
-                }
-
-                // Callout: Pro Tip (> [!TIP])
-                if (trimmed.startsWith("> [!TIP]")) {
-                  return (
-                    <div
-                      key={index}
-                      className="my-6 p-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 text-foreground space-y-2 shadow-sm"
-                    >
-                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider">
-                        <Lightbulb className="h-4 w-4" /> Pro Tip
-                      </div>
-                      <p className="text-sm sm:text-base leading-relaxed text-foreground/90">
-                        {trimmed.replace("> [!TIP]", "").trim()}
-                      </p>
-                    </div>
-                  )
-                }
-
-                // Callout: Note (> [!NOTE])
-                if (trimmed.startsWith("> [!NOTE]")) {
-                  return (
-                    <div
-                      key={index}
-                      className="my-6 p-5 rounded-2xl border border-sky-500/30 bg-sky-500/5 text-foreground space-y-2 shadow-sm"
-                    >
-                      <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold text-xs uppercase tracking-wider">
-                        <Info className="h-4 w-4" /> Editorial Note
-                      </div>
-                      <p className="text-sm sm:text-base leading-relaxed text-foreground/90">
-                        {trimmed.replace("> [!NOTE]", "").trim()}
-                      </p>
-                    </div>
-                  )
-                }
-
-                // Callout: Warning (> [!WARNING] or > [!CAUTION])
-                if (
-                  trimmed.startsWith("> [!WARNING]") ||
-                  trimmed.startsWith("> [!CAUTION]")
-                ) {
-                  return (
-                    <div
-                      key={index}
-                      className="my-6 p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-foreground space-y-2 shadow-sm"
-                    >
-                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
-                        <AlertTriangle className="h-4 w-4" /> Important Reminder
-                      </div>
-                      <p className="text-sm sm:text-base leading-relaxed text-foreground/90">
-                        {trimmed
-                          .replace(/> \[(?:!WARNING|!CAUTION)\]/, "")
-                          .trim()}
-                      </p>
-                    </div>
-                  )
-                }
-
-                // Blockquote (> text)
-                if (trimmed.startsWith("> ")) {
-                  return (
-                    <blockquote
-                      key={index}
-                      className="p-5 my-7 border-l-4 border-gas-500 bg-gas-500/5 rounded-r-2xl italic text-foreground text-base sm:text-lg leading-relaxed shadow-sm"
-                    >
-                      &quot;{trimmed.replace(/^>\s*/, "").replace(/"/g, "")}&quot;
-                    </blockquote>
-                  )
-                }
-
-                // Unordered List (- or *)
-                if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-                  const items = trimmed
-                    .split("\n")
-                    .map((li) => li.replace(/^[-*]\s+/, ""))
-                  return (
-                    <ul key={index} className="list-disc pl-6 space-y-2.5 my-5 text-base sm:text-[17px]">
-                      {items.map((it, i) => (
-                        <li key={i} className="text-foreground/90 leading-relaxed">
-                          {it}
-                        </li>
-                      ))}
-                    </ul>
-                  )
-                }
-
-                // Numbered List (1. )
-                if (/^\d+\.\s/.test(trimmed)) {
-                  const items = trimmed
-                    .split("\n")
-                    .map((li) => li.replace(/^\d+\.\s+/, ""))
-                  return (
-                    <ol key={index} className="list-decimal pl-6 space-y-2.5 my-5 text-base sm:text-[17px]">
-                      {items.map((it, i) => (
-                        <li key={i} className="text-foreground/90 leading-relaxed">
-                          {it}
-                        </li>
-                      ))}
-                    </ol>
-                  )
-                }
-
-                // Horizontal Rule (---)
-                if (trimmed === "---") {
-                  return <hr key={index} className="my-10 border-border/60" />
-                }
-
-                // Standard Paragraph
-                return (
-                  <p key={index} className="leading-relaxed">
-                    {trimmed}
-                  </p>
-                )
-              })}
+              {renderMarkdownBody(post.content)}
             </div>
 
             {/* ============================================================ */}

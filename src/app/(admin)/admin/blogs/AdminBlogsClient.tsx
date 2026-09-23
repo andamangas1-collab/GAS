@@ -34,6 +34,9 @@ import {
   Check,
   Save,
   PenLine,
+  Upload,
+  Loader2,
+  Link as LinkIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -42,6 +45,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { MultiImageUploader } from "@/components/blog/MultiImageUploader"
 import { BlogBroadcastModal } from "@/components/blog/BlogBroadcastModal"
+import { renderMarkdownBody } from "@/lib/format-markdown"
 
 interface AdminBlogPost {
   id: string
@@ -102,6 +106,9 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
   const [showSocialInputs, setShowSocialInputs] = useState(false)
 
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const coverFileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploadingCover, setIsUploadingCover] = useState(false)
+  const [coverUrlInput, setCoverUrlInput] = useState("")
 
   // Form State
   const [formData, setFormData] = useState(emptyFormData)
@@ -204,6 +211,90 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
       const cursorPos = start + before.length + (selectedText.length || 0)
       textarea.setSelectionRange(cursorPos, cursorPos)
     }, 50)
+  }
+
+  // Cover Image Handlers
+  const handleCoverUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({
+        variant: "destructive",
+        title: "Invalid File",
+        description: "Please select a valid image file (PNG, JPG, WEBP, GIF, SVG).",
+      })
+      return
+    }
+
+    setIsUploadingCover(true)
+    const uploadData = new FormData()
+    uploadData.append("files", file)
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadData,
+        credentials: "include",
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Upload failed")
+
+      const url = data.data?.urls?.[0] || data.data?.url
+      if (url) {
+        setFormData((prev) => ({
+          ...prev,
+          coverImage: url,
+          images: prev.images.includes(url) ? prev.images : [url, ...prev.images],
+        }))
+        toast({
+          title: "Cover Image Set!",
+          description: "Featured photo updated successfully.",
+        })
+      }
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: err.message || "Failed to upload image.",
+      })
+    } finally {
+      setIsUploadingCover(false)
+      if (coverFileInputRef.current) coverFileInputRef.current.value = ""
+    }
+  }
+
+  const handleApplyCoverUrl = () => {
+    const trimmed = coverUrlInput.trim()
+    if (!trimmed) return
+    if (
+      !trimmed.startsWith("http://") &&
+      !trimmed.startsWith("https://") &&
+      !trimmed.startsWith("/")
+    ) {
+      toast({
+        variant: "destructive",
+        title: "Invalid URL",
+        description: "Cover image URL must begin with http://, https://, or /",
+      })
+      return
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      coverImage: trimmed,
+      images: prev.images.includes(trimmed) ? prev.images : [trimmed, ...prev.images],
+    }))
+    setCoverUrlInput("")
+    toast({
+      title: "Cover Image Set!",
+      description: "Featured photo updated from URL.",
+    })
+  }
+
+  const handleRemoveCover = () => {
+    setFormData((prev) => ({ ...prev, coverImage: "" }))
+    toast({
+      title: "Cover Image Removed",
+      description: "Article currently has no cover image.",
+    })
   }
 
   const handleSaveArticle = async (e?: React.FormEvent) => {
@@ -403,6 +494,195 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
               </CardContent>
             </Card>
 
+            {/* Featured Cover Photo Placement Studio */}
+            <Card className="border-border/80 shadow-sm bg-card overflow-hidden">
+              <CardHeader className="p-4 pb-3 border-b border-border/50 bg-muted/20 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-gas-500" />
+                    Featured Cover Photo
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Primary 16:9 banner displayed on the article header, blog cards, and social share links.
+                  </CardDescription>
+                </div>
+                {formData.coverImage ? (
+                  <Badge className="bg-gas-600/90 text-white text-[11px] gap-1 shrink-0">
+                    <Sparkles className="h-3 w-3 fill-white" /> Ready
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-amber-500 border-amber-500/30 text-[10px] shrink-0">
+                    Recommended
+                  </Badge>
+                )}
+              </CardHeader>
+
+              <CardContent className="p-4 sm:p-5 space-y-4">
+                {/* Hidden File Input */}
+                <input
+                  ref={coverFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleCoverUpload(file)
+                  }}
+                />
+
+                {formData.coverImage ? (
+                  /* COVER IMAGE PREVIEW & ACTIONS */
+                  <div className="space-y-3">
+                    <div className="relative rounded-2xl overflow-hidden border border-border/80 bg-muted/20 shadow-md aspect-[16/9] max-h-80 w-full group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={formData.coverImage}
+                        alt="Article Cover"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+
+                      {/* Top Badges */}
+                      <div className="absolute top-3 left-3 flex items-center gap-2">
+                        <span className="bg-gas-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                          <Sparkles className="h-3 w-3 fill-white" /> Featured Cover
+                        </span>
+                        <span className="bg-black/60 backdrop-blur-md text-white/90 text-[10px] px-2 py-0.5 rounded-full font-mono">
+                          16:9 Ratio
+                        </span>
+                      </div>
+
+                      {/* Bottom Controls Bar */}
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
+                        <div className="text-[11px] text-white/90 truncate font-mono max-w-[60%] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg">
+                          {formData.coverImage}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isUploadingCover}
+                            onClick={() => coverFileInputRef.current?.click()}
+                            className="bg-white/90 hover:bg-white text-zinc-900 text-xs font-bold h-8 px-3 gap-1.5 shadow-md"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            {isUploadingCover ? "Uploading..." : "Replace Photo"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={handleRemoveCover}
+                            className="h-8 px-2.5 text-xs font-bold bg-rose-600/90 hover:bg-rose-600 shadow-md gap-1"
+                            title="Remove Cover Photo"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* EMPTY COVER DROPZONE & OPTIONS */
+                  <div className="space-y-3">
+                    <div
+                      onClick={() => coverFileInputRef.current?.click()}
+                      className={`relative cursor-pointer rounded-2xl border-2 border-dashed border-border/80 hover:border-gas-500/70 hover:bg-gas-500/5 transition-all p-8 text-center flex flex-col items-center justify-center gap-2.5 ${
+                        isUploadingCover ? "opacity-60 pointer-events-none" : ""
+                      }`}
+                    >
+                      {isUploadingCover ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="h-9 w-9 animate-spin text-gas-500" />
+                          <p className="text-xs font-bold text-foreground">Uploading cover photo...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="h-12 w-12 rounded-2xl bg-gas-500/10 border border-gas-500/20 flex items-center justify-center text-gas-600 dark:text-gas-400 shadow-inner">
+                            <Upload className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground">
+                              Upload Featured Cover Photo
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Drag and drop or click to browse files (16:9 ratio, PNG, JPG, WEBP up to 10MB)
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="bg-gas-600 hover:bg-gas-700 text-white font-semibold text-xs h-8 px-4 mt-1 gap-1.5 shadow-sm"
+                          >
+                            <Upload className="h-3.5 w-3.5" /> Choose Cover Image
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Or Paste Direct Image Link */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        type="url"
+                        placeholder="Or paste external image link (https://...)"
+                        value={coverUrlInput}
+                        onChange={(e) => setCoverUrlInput(e.target.value)}
+                        className="text-xs h-9 bg-background/80"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleApplyCoverUrl()
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!coverUrlInput.trim()}
+                        onClick={handleApplyCoverUrl}
+                        className="shrink-0 text-xs h-9 px-3 gap-1"
+                      >
+                        <LinkIcon className="h-3.5 w-3.5" /> Set as Cover
+                      </Button>
+                    </div>
+
+                    {/* Quick Pick from Uploaded Article Images */}
+                    {formData.images.length > 0 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <p className="text-[11px] font-semibold text-muted-foreground mb-2">
+                          Or select from photos already uploaded in this article:
+                        </p>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                          {formData.images.map((imgUrl, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({ ...prev, coverImage: imgUrl }))
+                                toast({
+                                  title: "Cover Image Selected",
+                                  description: "Selected photo is now set as the featured cover.",
+                                })
+                              }}
+                              className="relative shrink-0 h-14 w-24 rounded-lg overflow-hidden border border-border/70 hover:border-gas-500 hover:ring-2 hover:ring-gas-500/30 transition-all group"
+                              title="Click to set as cover"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={imgUrl} alt="Thumbnail" className="h-full w-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold">
+                                Use as Cover
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Content Editor with Write / Preview Tabs */}
             <Card className="border-border/80 shadow-sm bg-card overflow-hidden">
               {/* Tab Header & Formatting Toolbar */}
@@ -571,7 +851,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                   <div className="p-6 bg-background space-y-6 min-h-[450px]">
                     {/* Preview Cover Photo */}
                     {formData.coverImage && (
-                      <div className="rounded-xl overflow-hidden border border-border max-h-72">
+                      <div className="relative rounded-2xl overflow-hidden border border-border shadow-md aspect-[16/9] max-h-80 bg-muted/20">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={formData.coverImage}
@@ -599,148 +879,12 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                       </p>
                     </div>
 
-                    {/* Rendered Markdown Body */}
-                    <div className="space-y-4 text-foreground/90 text-sm leading-relaxed">
+                    {/* Rendered Markdown Body using Shared Engine */}
+                    <div className="space-y-5 text-foreground/90 text-[15px] sm:text-base leading-relaxed">
                       {formData.content ? (
-                        formData.content.split("\n\n").map((para, i) => {
-                          const trimmed = para.trim()
-
-                          // Image ![caption](url)
-                          const imgMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/)
-                          if (imgMatch) {
-                            return (
-                              <figure
-                                key={i}
-                                className="my-4 rounded-xl overflow-hidden border border-border bg-muted/20"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={imgMatch[2]}
-                                  alt={imgMatch[1]}
-                                  className="w-full max-h-80 object-cover"
-                                />
-                                {imgMatch[1] && (
-                                  <figcaption className="text-center text-xs text-muted-foreground p-2 italic">
-                                    {imgMatch[1]}
-                                  </figcaption>
-                                )}
-                              </figure>
-                            )
-                          }
-
-                          // Heading 2
-                          if (trimmed.startsWith("## ")) {
-                            return (
-                              <h2
-                                key={i}
-                                className="text-xl font-bold text-foreground pt-4 pb-1 border-b border-border/40"
-                              >
-                                {trimmed.replace("## ", "")}
-                              </h2>
-                            )
-                          }
-
-                          // Heading 3
-                          if (trimmed.startsWith("### ")) {
-                            return (
-                              <h3
-                                key={i}
-                                className="text-base font-bold text-foreground pt-2"
-                              >
-                                {trimmed.replace("### ", "")}
-                              </h3>
-                            )
-                          }
-
-                          // Callout: Pro Tip
-                          if (trimmed.startsWith("> [!TIP]")) {
-                            return (
-                              <div
-                                key={i}
-                                className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 text-foreground space-y-1"
-                              >
-                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase">
-                                  <Lightbulb className="h-4 w-4" /> Pro Tip
-                                </div>
-                                <p className="text-xs">
-                                  {trimmed.replace("> [!TIP]", "").trim()}
-                                </p>
-                              </div>
-                            )
-                          }
-
-                          // Callout: Note
-                          if (trimmed.startsWith("> [!NOTE]")) {
-                            return (
-                              <div
-                                key={i}
-                                className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 text-foreground space-y-1"
-                              >
-                                <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold text-xs uppercase">
-                                  <Info className="h-4 w-4" /> Note
-                                </div>
-                                <p className="text-xs">
-                                  {trimmed.replace("> [!NOTE]", "").trim()}
-                                </p>
-                              </div>
-                            )
-                          }
-
-                          // Callout: Warning
-                          if (
-                            trimmed.startsWith("> [!WARNING]") ||
-                            trimmed.startsWith("> [!CAUTION]")
-                          ) {
-                            return (
-                              <div
-                                key={i}
-                                className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 text-foreground space-y-1"
-                              >
-                                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase">
-                                  <AlertTriangle className="h-4 w-4" /> Warning
-                                </div>
-                                <p className="text-xs">
-                                  {trimmed
-                                    .replace(/> \[(?:!WARNING|!CAUTION)\]/, "")
-                                    .trim()}
-                                </p>
-                              </div>
-                            )
-                          }
-
-                          // Blockquote
-                          if (trimmed.startsWith("> ")) {
-                            return (
-                              <blockquote
-                                key={i}
-                                className="border-l-4 border-gas-500 bg-gas-500/5 p-3 rounded-r-lg italic text-xs"
-                              >
-                                {trimmed.replace(/^>\s*/, "")}
-                              </blockquote>
-                            )
-                          }
-
-                          // Bullet list
-                          if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-                            const items = trimmed
-                              .split("\n")
-                              .filter((l) => l.trim().startsWith("- ") || l.trim().startsWith("* "))
-                            return (
-                              <ul key={i} className="list-disc pl-5 space-y-1 text-xs">
-                                {items.map((it, idx) => (
-                                  <li key={idx}>
-                                    {it.replace(/^[-*]\s*/, "")}
-                                  </li>
-                                ))}
-                              </ul>
-                            )
-                          }
-
-                          return (
-                            <p key={i} className="leading-relaxed">
-                              {trimmed}
-                            </p>
-                          )
+                        renderMarkdownBody(formData.content, {
+                          paragraphClassName: "text-sm sm:text-base leading-relaxed",
+                          headingClassName: "text-xl sm:text-2xl font-bold mt-6 mb-3",
                         })
                       ) : (
                         <div className="text-center py-12 text-muted-foreground text-xs italic">
@@ -800,6 +944,23 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                   >
                     {formData.isPublished ? "Live" : "Draft"}
                   </Badge>
+                </div>
+
+                {/* Cover Photo Status Indicator */}
+                <div className="p-2.5 rounded-xl bg-muted/40 border border-border flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5 text-[11px]">
+                    <ImageIcon className="h-3.5 w-3.5 text-gas-500" />
+                    Cover Photo
+                  </span>
+                  {formData.coverImage ? (
+                    <span className="text-[11px] font-bold text-emerald-500 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Ready
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-amber-500 font-medium">
+                      Not Set
+                    </span>
+                  )}
                 </div>
 
                 {/* If editing, show stats summary */}
@@ -1120,13 +1281,17 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                 <tr key={post.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3 max-w-sm">
                     <div className="flex items-center gap-3">
-                      {post.coverImage && (
+                      {post.coverImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={post.coverImage}
                           alt={post.title}
-                          className="h-10 w-16 object-cover rounded border border-border shrink-0"
+                          className="h-12 w-20 object-cover rounded-lg border border-border shrink-0 shadow-sm"
                         />
+                      ) : (
+                        <div className="h-12 w-20 rounded-lg bg-muted/40 border border-dashed border-border/80 flex items-center justify-center text-muted-foreground shrink-0">
+                          <ImageIcon className="h-4 w-4 opacity-40" />
+                        </div>
                       )}
                       <div>
                         <div className="font-bold text-foreground line-clamp-1">
