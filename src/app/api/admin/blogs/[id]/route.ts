@@ -18,6 +18,8 @@ export async function PUT(
         excerpt: body.excerpt,
         content: body.content,
         coverImage: body.coverImage,
+        images: Array.isArray(body.images) ? body.images : undefined,
+        socialLinks: body.socialLinks !== undefined ? body.socialLinks : undefined,
         category: body.category,
         tags: body.tags,
         readTimeMinutes: body.readTimeMinutes ? parseInt(body.readTimeMinutes, 10) : undefined,

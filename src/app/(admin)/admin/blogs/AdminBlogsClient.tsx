@@ -15,12 +15,23 @@ import {
   Edit,
   Clock,
   Sparkles,
+  Radio,
+  Share,
+  MessageSquare,
+  Twitter,
+  Linkedin,
+  Send,
+  MessageCircle,
+  Youtube,
+  Image as ImageIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import { MultiImageUploader } from "@/components/blog/MultiImageUploader"
+import { BlogBroadcastModal } from "@/components/blog/BlogBroadcastModal"
 
 interface AdminBlogPost {
   id: string
@@ -28,11 +39,15 @@ interface AdminBlogPost {
   slug: string
   excerpt: string
   content: string
+  coverImage?: string | null
+  images?: string[]
+  socialLinks?: any
   category: string
   readTimeMinutes: number
   isPublished: boolean
   viewCount: number
   shareCount: number
+  clapCount?: number
   publishedAt: string | Date
   createdAt: string | Date
   author: {
@@ -51,15 +66,29 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showSocialInputs, setShowSocialInputs] = useState(false)
+
+  // Broadcast modal state
+  const [broadcastPost, setBroadcastPost] = useState<AdminBlogPost | null>(null)
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false)
 
   // Form State for new article
   const [newPost, setNewPost] = useState({
     title: "",
     excerpt: "",
     content: "",
-    category: "Affiliate Marketing",
+    category: "Affiliate Strategy",
     readTimeMinutes: 5,
+    coverImage: "",
+    images: [] as string[],
     isPublished: true,
+    socialLinks: {
+      twitter: "",
+      linkedin: "",
+      telegram: "",
+      whatsapp: "",
+      youtube: "",
+    },
   })
 
   const filteredPosts = posts.filter(
@@ -98,15 +127,28 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         title: "",
         excerpt: "",
         content: "",
-        category: "Affiliate Marketing",
+        category: "Affiliate Strategy",
         readTimeMinutes: 5,
+        coverImage: "",
+        images: [],
         isPublished: true,
+        socialLinks: {
+          twitter: "",
+          linkedin: "",
+          telegram: "",
+          whatsapp: "",
+          youtube: "",
+        },
       })
 
       toast({
         title: "Article Published!",
         description: `"${result.data.title}" is now active in the blog system.`,
       })
+
+      // Prompt to broadcast to socials immediately
+      setBroadcastPost(result.data)
+      setIsBroadcastModalOpen(true)
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -152,6 +194,11 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
     }
   }
 
+  const openBroadcastStudio = (post: AdminBlogPost) => {
+    setBroadcastPost(post)
+    setIsBroadcastModalOpen(true)
+  }
+
   return (
     <div className="space-y-8">
       {/* Action Bar */}
@@ -169,7 +216,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         <Button
           onClick={() => setIsCreating(!isCreating)}
           size="sm"
-          className="bg-gas-600 hover:bg-gas-700 text-white font-semibold gap-1.5 text-xs h-9 ml-auto"
+          className="bg-gas-600 hover:bg-gas-700 text-white font-semibold gap-1.5 text-xs h-9 ml-auto shadow-sm"
         >
           <Plus className="h-4 w-4" />
           {isCreating ? "Cancel" : "Create New Article"}
@@ -178,25 +225,25 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
 
       {/* Creation Modal / Form */}
       {isCreating && (
-        <Card className="border-gas-500/30 bg-card/90 shadow-xl">
+        <Card className="border-gas-500/30 bg-card/90 shadow-2xl">
           <CardHeader>
-            <CardTitle className="text-lg font-bold text-foreground">
-              Write New Strategic Article
+            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-gas-500" /> Write Strategic Article
             </CardTitle>
             <CardDescription className="text-xs">
-              Publish guides, playbooks, and insights with social sharing &amp; affiliate attribution.
+              Publish guides with multi-image support, social thread syncing, and 1-click multi-channel broadcasting.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleCreatePost} className="space-y-4">
+            <form onSubmit={handleCreatePost} className="space-y-5">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">Article Title *</label>
                 <Input
                   required
-                  placeholder="e.g. 5 Strategies to Scale Direct Commissions"
+                  placeholder="e.g. 5 Strategies to Scale Direct Commissions in 2026"
                   value={newPost.title}
                   onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                  className="h-10 text-sm"
+                  className="h-10 text-sm font-semibold"
                 />
               </div>
 
@@ -206,7 +253,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                   <select
                     value={newPost.category}
                     onChange={(e) => setNewPost({ ...newPost, category: e.target.value })}
-                    className="w-full h-10 px-3 rounded-md bg-background border border-border text-sm text-foreground"
+                    className="w-full h-10 px-3 rounded-md bg-background border border-border text-xs text-foreground"
                   >
                     <option value="Affiliate Strategy">Affiliate Strategy</option>
                     <option value="V2V Philosophy">V2V Philosophy</option>
@@ -229,7 +276,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                         readTimeMinutes: parseInt(e.target.value, 10) || 5,
                       })
                     }
-                    className="h-10 text-sm"
+                    className="h-10 text-xs"
                   />
                 </div>
               </div>
@@ -244,22 +291,145 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                   placeholder="Brief 1-2 sentence summary displayed in social cards and search results..."
                   value={newPost.excerpt}
                   onChange={(e) => setNewPost({ ...newPost, excerpt: e.target.value })}
-                  className="w-full p-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500"
+                  className="w-full p-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
                 />
               </div>
 
+              {/* Multi-Image Uploader Studio */}
+              <MultiImageUploader
+                images={newPost.images}
+                coverImage={newPost.coverImage}
+                onChange={(imgs) => setNewPost({ ...newPost, images: imgs })}
+                onSetCoverImage={(cover) => setNewPost({ ...newPost, coverImage: cover })}
+                onInsertMarkdown={(snippet) =>
+                  setNewPost({ ...newPost, content: newPost.content + "\n" + snippet })
+                }
+              />
+
+              {/* Content Editor */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">
-                  Content (Markdown supported: ## Headings, lists, quotes) *
+                  Content (Markdown supported: ## Headings, lists, quotes, images) *
                 </label>
                 <textarea
                   required
-                  rows={8}
-                  placeholder="Write article paragraphs... Use ## for headings and - for bullet points."
+                  rows={10}
+                  placeholder="Write article paragraphs... Use ## for headings and - for bullet points. You can also use > [!TIP] or > [!NOTE] for callout boxes."
                   value={newPost.content}
                   onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                  className="w-full p-3 rounded-md bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500"
+                  className="w-full p-3 rounded-md bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
                 />
+              </div>
+
+              {/* Expandable Social Links Feeding Section */}
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSocialInputs(!showSocialInputs)}
+                  className="w-full flex items-center justify-between text-xs font-bold text-foreground"
+                >
+                  <span className="flex items-center gap-1.5 text-gas-600 dark:text-gas-400">
+                    <MessageSquare className="h-4 w-4" />
+                    Feed Social Media Discussion Links ({showSocialInputs ? "Hide" : "Expand"})
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    Connect X thread, LinkedIn post, Telegram, WhatsApp chat
+                  </span>
+                </button>
+
+                {showSocialInputs && (
+                  <div className="pt-3 border-t border-border/50 grid sm:grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Twitter className="h-3 w-3 text-sky-500" /> X (Twitter) Post URL
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://x.com/username/status/..."
+                        value={newPost.socialLinks.twitter}
+                        onChange={(e) =>
+                          setNewPost({
+                            ...newPost,
+                            socialLinks: { ...newPost.socialLinks, twitter: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Linkedin className="h-3 w-3 text-blue-600" /> LinkedIn Discussion URL
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://www.linkedin.com/feed/update/..."
+                        value={newPost.socialLinks.linkedin}
+                        onChange={(e) =>
+                          setNewPost({
+                            ...newPost,
+                            socialLinks: { ...newPost.socialLinks, linkedin: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Send className="h-3 w-3 text-sky-400" /> Telegram Discussion Link
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://t.me/channel/123"
+                        value={newPost.socialLinks.telegram}
+                        onChange={(e) =>
+                          setNewPost({
+                            ...newPost,
+                            socialLinks: { ...newPost.socialLinks, telegram: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <MessageCircle className="h-3 w-3 text-emerald-500" /> WhatsApp Community Link
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://chat.whatsapp.com/..."
+                        value={newPost.socialLinks.whatsapp}
+                        onChange={(e) =>
+                          setNewPost({
+                            ...newPost,
+                            socialLinks: { ...newPost.socialLinks, whatsapp: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                        <Youtube className="h-3 w-3 text-rose-500" /> YouTube Video Walkthrough URL
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={newPost.socialLinks.youtube}
+                        onChange={(e) =>
+                          setNewPost({
+                            ...newPost,
+                            socialLinks: { ...newPost.socialLinks, youtube: e.target.value },
+                          })
+                        }
+                        className="h-8 text-xs bg-background/80"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-2">
@@ -278,9 +448,9 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-9 px-5"
+                  className="bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-10 px-6 shadow-md shadow-gas-600/20"
                 >
-                  {loading ? "Publishing..." : "Save & Publish Article"}
+                  {loading ? "Publishing..." : "Save & Launch Article"}
                 </Button>
               </div>
             </form>
@@ -294,10 +464,11 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
           <table className="w-full text-left text-xs">
             <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground uppercase font-semibold text-[10px] tracking-wider">
               <tr>
-                <th className="px-4 py-3">Title &amp; Excerpt</th>
+                <th className="px-4 py-3">Article &amp; Visuals</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3 text-center">Status</th>
                 <th className="px-4 py-3 text-center">Telemetry</th>
+                <th className="px-4 py-3 text-center">Broadcast</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -305,14 +476,31 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
               {filteredPosts.map((post) => (
                 <tr key={post.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3 max-w-sm">
-                    <div className="font-bold text-foreground line-clamp-1">
-                      {post.title}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                      {post.excerpt}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground/80 mt-1">
-                      slug: <span className="font-mono">{post.slug}</span>
+                    <div className="flex items-center gap-3">
+                      {post.coverImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={post.coverImage}
+                          alt={post.title}
+                          className="h-10 w-16 object-cover rounded border border-border shrink-0"
+                        />
+                      )}
+                      <div>
+                        <div className="font-bold text-foreground line-clamp-1">
+                          {post.title}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                          {post.excerpt}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground/80 mt-1 flex items-center gap-2">
+                          <span className="font-mono">/{post.slug}</span>
+                          {post.images && post.images.length > 0 && (
+                            <span className="text-gas-600 font-medium">
+                              📷 {post.images.length} photos
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </td>
 
@@ -342,16 +530,33 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
 
                   <td className="px-4 py-3 text-center whitespace-nowrap text-muted-foreground text-[11px]">
                     <div className="flex items-center justify-center gap-3">
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1" title="Reads">
                         <Eye className="h-3 w-3" /> {post.viewCount}
                       </span>
-                      <span className="flex items-center gap-1 text-gas-500">
+                      <span className="flex items-center gap-1" title="Claps">
+                        👏 {post.clapCount || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-gas-500" title="Shares">
                         <Share2 className="h-3 w-3" /> {post.shareCount}
                       </span>
                     </div>
                   </td>
 
-                  <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
+                  {/* 1-Click Social Broadcast Studio trigger */}
+                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openBroadcastStudio(post)}
+                      className="h-7 px-2.5 text-[11px] font-bold border-gas-500/30 text-gas-600 hover:bg-gas-500/10 gap-1.5 shadow-sm"
+                      title="1-Click Multi-Channel Social Broadcast"
+                    >
+                      <Radio className="h-3 w-3 text-gas-500 animate-pulse" />
+                      <span>Broadcast</span>
+                    </Button>
+                  </td>
+
+                  <td className="px-4 py-3 text-right whitespace-nowrap space-x-1">
                     <Link href={`/blog/${post.slug}`} target="_blank">
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
                         <ExternalLink className="h-3.5 w-3.5" />
@@ -371,7 +576,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
 
               {filteredPosts.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
                     No articles found. Click &quot;Create New Article&quot; to write your first post.
                   </td>
                 </tr>
@@ -380,6 +585,25 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
           </table>
         </div>
       </div>
+
+      {/* 1-Click Social Broadcast Modal */}
+      <BlogBroadcastModal
+        post={
+          broadcastPost
+            ? {
+                id: broadcastPost.id,
+                title: broadcastPost.title,
+                slug: broadcastPost.slug,
+                excerpt: broadcastPost.excerpt,
+                coverImage: broadcastPost.coverImage,
+                tags: [],
+                category: broadcastPost.category,
+              }
+            : null
+        }
+        isOpen={isBroadcastModalOpen}
+        onClose={() => setIsBroadcastModalOpen(false)}
+      />
     </div>
   )
 }

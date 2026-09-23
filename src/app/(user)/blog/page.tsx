@@ -34,11 +34,13 @@ export default async function BlogPage() {
         slug: true,
         excerpt: true,
         coverImage: true,
+        images: true,
         category: true,
         tags: true,
         readTimeMinutes: true,
         viewCount: true,
         shareCount: true,
+        clapCount: true,
         publishedAt: true,
         author: {
           select: {

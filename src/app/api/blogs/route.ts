@@ -37,11 +37,13 @@ export async function GET(request: NextRequest) {
           slug: true,
           excerpt: true,
           coverImage: true,
+          images: true,
           category: true,
           tags: true,
           readTimeMinutes: true,
           viewCount: true,
           shareCount: true,
+          clapCount: true,
           publishedAt: true,
           author: {
             select: {

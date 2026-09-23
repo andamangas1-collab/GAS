@@ -24,11 +24,13 @@ interface BlogPostSummary {
   slug: string
   excerpt: string
   coverImage?: string | null
+  images?: string[]
   category: string
   tags: string[]
   readTimeMinutes: number
   viewCount: number
   shareCount: number
+  clapCount?: number
   publishedAt: string | Date
   author: {
     email: string
@@ -164,7 +166,23 @@ export function BlogFeedClient({ initialPosts, categories }: BlogFeedClientProps
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {regularPosts.map((post) => (
             <Link key={post.id} href={`/blog/${post.slug}`} className="group flex flex-col h-full">
-              <Card className="flex flex-col justify-between h-full bg-card/60 hover:bg-card border-border/60 hover:border-gas-500/40 transition-all duration-300 shadow-md group-hover:shadow-lg group-hover:-translate-y-1">
+              <Card className="flex flex-col justify-between h-full bg-card/60 hover:bg-card border-border/60 hover:border-gas-500/40 transition-all duration-300 shadow-md group-hover:shadow-lg group-hover:-translate-y-1 overflow-hidden">
+                {post.coverImage && (
+                  <div className="relative aspect-video w-full overflow-hidden bg-muted/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={post.coverImage}
+                      alt={post.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {post.images && post.images.length > 1 && (
+                      <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
+                        <span>📷 {post.images.length}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <CardHeader className="space-y-2.5 pb-3">
                   <div className="flex items-center justify-between text-xs">
                     <Badge variant="outline" className="text-[11px] font-medium border-gas-500/30 text-gas-500">
@@ -203,6 +221,9 @@ export function BlogFeedClient({ initialPosts, categories }: BlogFeedClientProps
                   <div className="flex items-center gap-3 text-[11px]">
                     <span className="inline-flex items-center gap-1">
                       <Eye className="h-3 w-3" /> {post.viewCount}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      👏 {post.clapCount || 0}
                     </span>
                     <span className="inline-flex items-center gap-1 text-gas-500">
                       <Share2 className="h-3 w-3" /> {post.shareCount}

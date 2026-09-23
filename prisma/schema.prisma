@@ -153,6 +153,7 @@ model User {
   auditLogs         AuditLog[]
   blogPosts         BlogPost[]
   blogShareLogs     BlogShareLog[]
+  blogReactions     BlogReaction[]
 
   @@index([referralCode])
   @@index([referredBy])
@@ -603,6 +604,7 @@ model BlogPost {
   excerpt           String         @db.Text
   content           String         @db.Text
   coverImage        String?        @map("cover_image")
+  images            String[]       @default([])
   category          String         @default("Affiliate Marketing")
   tags              String[]       @default([])
   readTimeMinutes   Int            @default(5) @map("read_time_minutes")
@@ -611,6 +613,8 @@ model BlogPost {
   authorId          String         @map("author_id")
   viewCount         Int            @default(0) @map("view_count")
   shareCount        Int            @default(0) @map("share_count")
+  clapCount         Int            @default(0) @map("clap_count")
+  socialLinks       Json?          @map("social_links")
   metaTitle         String?        @map("meta_title")
   metaDescription   String?        @map("meta_description") @db.Text
   publishedAt       DateTime       @default(now()) @map("published_at")
@@ -620,6 +624,7 @@ model BlogPost {
   author          User           @relation(fields: [authorId], references: [id])
   featuredProduct Product?       @relation(fields: [featuredProductId], references: [id], onDelete: SetNull)
   shareLogs       BlogShareLog[]
+  reactions       BlogReaction[]
 
   @@index([slug])
   @@index([category])
@@ -643,4 +648,22 @@ model BlogShareLog {
   @@index([userId])
   @@index([platform])
   @@map("blog_share_logs")
+}
+
+model BlogReaction {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String?  @map("user_id")
+  ipAddress String?  @map("ip_address")
+  type      String   @default("CLAP") // CLAP, HEART, ROCKET
+  count     Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([postId])
+  @@index([userId])
+  @@index([type])
+  @@map("blog_reactions")
 }
