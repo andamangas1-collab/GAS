@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ListFilter, ChevronDown, ChevronRight, Bookmark } from "lucide-react"
+import { ListFilter, ChevronDown, ChevronRight, Bookmark, Sparkles } from "lucide-react"
 
 export interface TocItem {
   id: string
@@ -65,7 +65,7 @@ export function TableOfContents({ content, className = "" }: TableOfContentsProp
           }
         })
       },
-      { rootMargin: "-80px 0% -60% 0%" }
+      { rootMargin: "-90px 0% -65% 0%" }
     )
 
     items.forEach((item) => {
@@ -81,7 +81,7 @@ export function TableOfContents({ content, className = "" }: TableOfContentsProp
   const scrollToHeading = (id: string) => {
     const element = document.getElementById(id)
     if (element) {
-      const offset = 90 // Account for sticky header
+      const offset = 100 // Account for fixed reading progress bar and top bar
       const bodyRect = document.body.getBoundingClientRect().top
       const elementRect = element.getBoundingClientRect().top
       const elementPosition = elementRect - bodyRect
@@ -99,56 +99,25 @@ export function TableOfContents({ content, className = "" }: TableOfContentsProp
   return (
     <>
       {/* Mobile Collapsible Dropdown */}
-      <div className="lg:hidden mb-6 rounded-xl border border-border/70 bg-card/60 p-3 shadow-sm">
+      <div className="lg:hidden mb-8 rounded-2xl border border-border/80 bg-card/70 p-4 shadow-sm backdrop-blur-md">
         <button
           type="button"
           onClick={() => setIsOpenMobile(!isOpenMobile)}
           className="w-full flex items-center justify-between text-xs font-bold text-foreground"
         >
-          <span className="flex items-center gap-1.5">
-            <ListFilter className="h-4 w-4 text-gas-500" />
-            Table of Contents ({items.length} Sections)
+          <span className="flex items-center gap-2 text-gas-600 dark:text-gas-400">
+            <ListFilter className="h-4 w-4" />
+            Quick Navigation ({items.length} Sections)
           </span>
           <ChevronDown
-            className={`h-4 w-4 text-muted-foreground transition-transform ${
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
               isOpenMobile ? "rotate-180" : ""
             }`}
           />
         </button>
 
         {isOpenMobile && (
-          <nav className="mt-3 pt-3 border-t border-border/50 space-y-1.5 text-xs">
-            {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => scrollToHeading(item.id)}
-                className={`block w-full text-left py-1 px-2 rounded-md transition-all ${
-                  item.level === 3 ? "pl-4 text-[11px]" : "font-semibold"
-                } ${
-                  activeId === item.id
-                    ? "bg-gas-500/10 text-gas-600 font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                }`}
-              >
-                {item.text}
-              </button>
-            ))}
-          </nav>
-        )}
-      </div>
-
-      {/* Desktop Sticky Sidebar */}
-      <aside className={`hidden lg:block w-64 shrink-0 ${className}`}>
-        <div className="sticky top-24 space-y-3 rounded-2xl border border-border/70 bg-card/40 p-4 backdrop-blur-md shadow-sm">
-          <div className="flex items-center gap-2 pb-2 border-b border-border/60">
-            <Bookmark className="h-4 w-4 text-gas-500" />
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              On This Page
-            </h4>
-          </div>
-
-          <nav className="space-y-1 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1 text-xs scrollbar-none">
+          <nav className="mt-3 pt-3 border-t border-border/50 space-y-1 text-xs">
             {items.map((item) => {
               const isActive = activeId === item.id
               return (
@@ -156,17 +125,60 @@ export function TableOfContents({ content, className = "" }: TableOfContentsProp
                   key={item.id}
                   type="button"
                   onClick={() => scrollToHeading(item.id)}
-                  className={`group flex items-start gap-1.5 w-full text-left py-1 px-2 rounded-lg transition-all ${
-                    item.level === 3 ? "pl-5 text-[11px]" : "font-semibold text-xs"
+                  className={`block w-full text-left py-1.5 px-3 rounded-lg transition-all ${
+                    item.level === 3 ? "pl-6 text-[11px]" : "font-medium"
                   } ${
                     isActive
-                      ? "bg-gas-500/10 text-gas-600 font-bold border-l-2 border-gas-500"
+                      ? "bg-gas-500/15 text-gas-600 dark:text-gas-400 font-bold"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                   }`}
                 >
+                  {item.text}
+                </button>
+              )
+            })}
+          </nav>
+        )}
+      </div>
+
+      {/* Desktop Sticky Sidebar */}
+      <aside className={`hidden lg:block w-72 shrink-0 ${className}`}>
+        <div className="sticky top-24 space-y-4 rounded-3xl border border-border/70 bg-card/60 p-5 backdrop-blur-xl shadow-lg shadow-black/5">
+          <div className="flex items-center justify-between pb-3 border-b border-border/60">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-gas-500/10 flex items-center justify-center text-gas-500">
+                <Bookmark className="h-3.5 w-3.5" />
+              </div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                In This Article
+              </h4>
+            </div>
+            <span className="text-[10px] font-mono text-muted-foreground font-semibold">
+              {items.length} sections
+            </span>
+          </div>
+
+          <nav className="space-y-1 max-h-[calc(100vh-16rem)] overflow-y-auto pr-1 text-xs scrollbar-none">
+            {items.map((item) => {
+              const isActive = activeId === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => scrollToHeading(item.id)}
+                  className={`group flex items-start gap-2 w-full text-left py-1.5 px-2.5 rounded-xl transition-all duration-150 ${
+                    item.level === 3 ? "pl-6 text-[11px]" : "font-medium text-xs"
+                  } ${
+                    isActive
+                      ? "bg-gas-500/10 text-gas-600 dark:text-gas-400 font-bold border-l-2 border-gas-500 shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  }`}
+                >
                   <ChevronRight
-                    className={`h-3 w-3 mt-0.5 shrink-0 transition-transform ${
-                      isActive ? "text-gas-500 translate-x-0.5" : "text-muted-foreground/40 group-hover:text-muted-foreground"
+                    className={`h-3.5 w-3.5 mt-0.5 shrink-0 transition-transform ${
+                      isActive
+                        ? "text-gas-500 translate-x-0.5"
+                        : "text-muted-foreground/30 group-hover:text-muted-foreground"
                     }`}
                   />
                   <span className="line-clamp-2 leading-relaxed">{item.text}</span>
