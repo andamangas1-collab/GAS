@@ -667,3 +667,14 @@ model BlogReaction {
   @@index([type])
   @@map("blog_reactions")
 }
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  filename  String
+  mimeType  String   @map("mime_type")
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("media_assets")
+}

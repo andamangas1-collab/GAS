@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
 import {
   BookOpen,
@@ -10,13 +10,10 @@ import {
   Share2,
   Trash2,
   CheckCircle2,
-  XCircle,
   ExternalLink,
   Edit,
   Clock,
   Sparkles,
-  Radio,
-  Share,
   MessageSquare,
   Twitter,
   Linkedin,
@@ -24,7 +21,19 @@ import {
   MessageCircle,
   Youtube,
   Image as ImageIcon,
-  X,
+  ArrowLeft,
+  Bold,
+  Italic,
+  Heading2,
+  Heading3,
+  Quote,
+  List,
+  Lightbulb,
+  Info,
+  AlertTriangle,
+  Check,
+  Save,
+  PenLine,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,57 +70,51 @@ interface AdminBlogsClientProps {
   initialPosts: AdminBlogPost[]
 }
 
+const emptyFormData = {
+  title: "",
+  excerpt: "",
+  content: "",
+  category: "Affiliate Strategy",
+  readTimeMinutes: 5,
+  coverImage: "",
+  images: [] as string[],
+  isPublished: true,
+  socialLinks: {
+    twitter: "",
+    linkedin: "",
+    telegram: "",
+    whatsapp: "",
+    youtube: "",
+  },
+}
+
 export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
   const { toast } = useToast()
   const [posts, setPosts] = useState<AdminBlogPost[]>(initialPosts)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isCreating, setIsCreating] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Editor mode: "none" | "create" | "edit"
+  const [editorMode, setEditorMode] = useState<"none" | "create" | "edit">("none")
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editingPostOriginal, setEditingPostOriginal] = useState<AdminBlogPost | null>(null)
+  const [editorTab, setEditorTab] = useState<"write" | "preview">("write")
   const [showSocialInputs, setShowSocialInputs] = useState(false)
 
-  // Edit article state
-  const [editingPost, setEditingPost] = useState<AdminBlogPost | null>(null)
-  const [showEditSocialInputs, setShowEditSocialInputs] = useState(false)
-  const [editForm, setEditForm] = useState({
-    title: "",
-    excerpt: "",
-    content: "",
-    category: "Affiliate Strategy",
-    readTimeMinutes: 5,
-    coverImage: "",
-    images: [] as string[],
-    isPublished: true,
-    socialLinks: {
-      twitter: "",
-      linkedin: "",
-      telegram: "",
-      whatsapp: "",
-      youtube: "",
-    },
-  })
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Broadcast modal state
-  const [broadcastPost, setBroadcastPost] = useState<AdminBlogPost | null>(null)
-  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false)
+  // Form State
+  const [formData, setFormData] = useState(emptyFormData)
 
-  // Form State for new article
-  const [newPost, setNewPost] = useState({
-    title: "",
-    excerpt: "",
-    content: "",
-    category: "Affiliate Strategy",
-    readTimeMinutes: 5,
-    coverImage: "",
-    images: [] as string[],
-    isPublished: true,
-    socialLinks: {
-      twitter: "",
-      linkedin: "",
-      telegram: "",
-      whatsapp: "",
-      youtube: "",
-    },
-  })
+  // Social Share modal state
+  const [shareModalPost, setShareModalPost] = useState<AdminBlogPost | null>(null)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+
+  // Word count & estimated read time
+  const wordCount = formData.content.trim()
+    ? formData.content.trim().split(/\s+/).length
+    : 0
+  const autoEstimatedReadTime = Math.max(1, Math.ceil(wordCount / 200))
 
   const filteredPosts = posts.filter(
     (p) =>
@@ -119,73 +122,23 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
       p.category.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newPost.title.trim() || !newPost.excerpt.trim() || !newPost.content.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please fill out all required fields (title, summary, content).",
-      })
-      return
-    }
-
-    setLoading(true)
-    try {
-      const res = await fetch("/api/admin/blogs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newPost),
-      })
-      const result = await res.json()
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to create post")
-      }
-
-      setPosts([result.data, ...posts])
-      setIsCreating(false)
-      setNewPost({
-        title: "",
-        excerpt: "",
-        content: "",
-        category: "Affiliate Strategy",
-        readTimeMinutes: 5,
-        coverImage: "",
-        images: [],
-        isPublished: true,
-        socialLinks: {
-          twitter: "",
-          linkedin: "",
-          telegram: "",
-          whatsapp: "",
-          youtube: "",
-        },
-      })
-
-      toast({
-        title: "Article Published!",
-        description: `"${result.data.title}" has been saved.`,
-      })
-
-      // Prompt to share to socials immediately
-      setBroadcastPost(result.data)
-      setIsBroadcastModalOpen(true)
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Creation Failed",
-        description: err.message,
-      })
-    } finally {
-      setLoading(false)
+  const handleStartCreate = () => {
+    setEditorMode("create")
+    setEditingPostId(null)
+    setEditingPostOriginal(null)
+    setFormData(emptyFormData)
+    setEditorTab("write")
+    setShowSocialInputs(false)
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" })
     }
   }
 
   const handleStartEdit = (post: AdminBlogPost) => {
-    setIsCreating(false)
-    setEditingPost(post)
-    setEditForm({
+    setEditorMode("edit")
+    setEditingPostId(post.id)
+    setEditingPostOriginal(post)
+    setFormData({
       title: post.title,
       excerpt: post.excerpt,
       content: post.content,
@@ -202,7 +155,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         youtube: post.socialLinks?.youtube || "",
       },
     })
-    setShowEditSocialInputs(
+    setShowSocialInputs(
       Boolean(
         post.socialLinks?.twitter ||
         post.socialLinks?.linkedin ||
@@ -211,49 +164,108 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         post.socialLinks?.youtube
       )
     )
+    setEditorTab("write")
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
   }
 
-  const handleCancelEdit = () => {
-    setEditingPost(null)
+  const handleCloseEditor = () => {
+    setEditorMode("none")
+    setEditingPostId(null)
+    setEditingPostOriginal(null)
   }
 
-  const handleUpdatePost = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingPost) return
+  // Quick Markdown formatting inserter
+  const insertMarkdown = (before: string, after = "") => {
+    const textarea = contentTextareaRef.current
+    if (!textarea) {
+      setFormData((prev) => ({
+        ...prev,
+        content: prev.content + "\n" + before + after,
+      }))
+      return
+    }
 
-    if (!editForm.title.trim() || !editForm.excerpt.trim() || !editForm.content.trim()) {
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = textarea.value.substring(start, end)
+    const newText =
+      textarea.value.substring(0, start) +
+      before +
+      (selectedText || "") +
+      after +
+      textarea.value.substring(end)
+
+    setFormData((prev) => ({ ...prev, content: newText }))
+
+    setTimeout(() => {
+      textarea.focus()
+      const cursorPos = start + before.length + (selectedText.length || 0)
+      textarea.setSelectionRange(cursorPos, cursorPos)
+    }, 50)
+  }
+
+  const handleSaveArticle = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+
+    if (!formData.title.trim() || !formData.excerpt.trim() || !formData.content.trim()) {
       toast({
         variant: "destructive",
-        title: "Validation Error",
-        description: "Please fill out all required fields (title, summary, content).",
+        title: "Missing Information",
+        description: "Please fill out the article title, summary, and content.",
       })
       return
     }
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/blogs/${editingPost.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || "Failed to update article")
+      if (editorMode === "create") {
+        const res = await fetch("/api/admin/blogs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        })
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error || "Failed to create article")
 
-      setPosts(posts.map((p) => (p.id === editingPost.id ? { ...p, ...result.data } : p)))
-      setEditingPost(null)
-      toast({
-        title: "Article Updated!",
-        description: `"${result.data.title}" has been successfully updated.`,
-      })
+        setPosts([result.data, ...posts])
+        setEditorMode("none")
+        setFormData(emptyFormData)
+
+        toast({
+          title: "Article Published!",
+          description: `"${result.data.title}" has been created successfully.`,
+        })
+
+        // Prompt to share to socials
+        setShareModalPost(result.data)
+        setIsShareModalOpen(true)
+      } else if (editorMode === "edit" && editingPostId) {
+        const res = await fetch(`/api/admin/blogs/${editingPostId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        })
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error || "Failed to update article")
+
+        setPosts(
+          posts.map((p) => (p.id === editingPostId ? { ...p, ...result.data } : p))
+        )
+        setEditorMode("none")
+        setEditingPostId(null)
+
+        toast({
+          title: "Article Updated!",
+          description: `"${result.data.title}" has been updated successfully.`,
+        })
+      }
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Update Failed",
-        description: err.message,
+        title: "Save Failed",
+        description: err.message || "An unexpected error occurred.",
       })
     } finally {
       setLoading(false)
@@ -287,26 +299,792 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         posts.map((p) => (p.id === post.id ? { ...p, isPublished: !p.isPublished } : p))
       )
       toast({
-        title: post.isPublished ? "Article Un-published (Draft)" : "Article Published Live",
+        title: post.isPublished ? "Article Moved to Drafts" : "Article Published Live",
       })
     } catch (err: any) {
       toast({ variant: "destructive", title: "Update Failed", description: err.message })
     }
   }
 
-  const openBroadcastStudio = (post: AdminBlogPost) => {
-    setBroadcastPost(post)
-    setIsBroadcastModalOpen(true)
+  const openShareModal = (post: AdminBlogPost) => {
+    setShareModalPost(post)
+    setIsShareModalOpen(true)
   }
 
+  // ============================================================
+  // RENDER: FULL ARTICLE STUDIO (Create / Edit View)
+  // ============================================================
+  if (editorMode !== "none") {
+    return (
+      <div className="space-y-6">
+        {/* Studio Top Navigation Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-card border border-border shadow-sm">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCloseEditor}
+              className="h-9 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Articles
+            </Button>
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge
+                  className={`text-[10px] font-semibold ${
+                    editorMode === "create"
+                      ? "bg-gas-600 text-white"
+                      : "bg-blue-600 text-white"
+                  }`}
+                >
+                  {editorMode === "create" ? "New Article" : "Edit Mode"}
+                </Badge>
+                <span className="text-xs font-bold text-foreground line-clamp-1">
+                  {formData.title.trim() || "Untitled Article"}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {editorMode === "create"
+                  ? "Drafting new article for publication"
+                  : `Last saved: ${
+                      editingPostOriginal?.publishedAt
+                        ? new Date(editingPostOriginal.publishedAt).toLocaleDateString()
+                        : "Draft"
+                    }`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCloseEditor}
+              className="text-xs h-9 px-3"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={() => handleSaveArticle()}
+              className="bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-9 px-5 gap-1.5 shadow-md shadow-gas-600/20"
+            >
+              <Save className="h-4 w-4" />
+              {loading
+                ? "Saving..."
+                : editorMode === "create"
+                ? "Publish Article"
+                : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Studio Two-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* LEFT COLUMN: Main Writing & Preview Area (8 Cols) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Title Card */}
+            <Card className="border-border/80 shadow-sm bg-card">
+              <CardContent className="p-5 space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <PenLine className="h-3.5 w-3.5 text-gas-500" />
+                  Article Headline *
+                </label>
+                <Input
+                  required
+                  placeholder="Enter a captivating article title..."
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="text-xl sm:text-2xl font-black h-14 px-4 bg-background border-border/80 focus-visible:ring-gas-500 placeholder:text-muted-foreground/50"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Content Editor with Write / Preview Tabs */}
+            <Card className="border-border/80 shadow-sm bg-card overflow-hidden">
+              {/* Tab Header & Formatting Toolbar */}
+              <div className="p-3 border-b border-border bg-muted/30 flex flex-wrap items-center justify-between gap-3">
+                {/* Write vs Preview Toggle */}
+                <div className="flex items-center bg-background rounded-lg p-0.5 border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("write")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                      editorTab === "write"
+                        ? "bg-gas-600 text-white shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <PenLine className="h-3.5 w-3.5" /> Write
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("preview")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                      editorTab === "preview"
+                        ? "bg-gas-600 text-white shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Live Preview
+                  </button>
+                </div>
+
+                {/* Markdown Formatting Helpers (Visible in Write Mode) */}
+                {editorTab === "write" && (
+                  <div className="flex flex-wrap items-center gap-1 text-xs">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown("## ", "\n")}
+                      title="Heading 2"
+                      className="h-8 px-2 text-xs font-bold"
+                    >
+                      <Heading2 className="h-3.5 w-3.5 mr-0.5" /> H2
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown("### ", "\n")}
+                      title="Heading 3"
+                      className="h-8 px-2 text-xs font-bold"
+                    >
+                      <Heading3 className="h-3.5 w-3.5 mr-0.5" /> H3
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown("**", "**")}
+                      title="Bold"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Bold className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown("*", "*")}
+                      title="Italic"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Italic className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown("> ")}
+                      title="Blockquote"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Quote className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => insertMarkdown("- ")}
+                      title="Bullet List"
+                      className="h-8 w-8 p-0"
+                    >
+                      <List className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => insertMarkdown("> [!TIP] ", "\n")}
+                      title="Pro Tip Box"
+                      className="h-8 px-2 text-[11px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1"
+                    >
+                      <Lightbulb className="h-3.5 w-3.5" /> Tip
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => insertMarkdown("> [!NOTE] ", "\n")}
+                      title="Note Box"
+                      className="h-8 px-2 text-[11px] text-sky-600 dark:text-sky-400 border-sky-500/30 gap-1"
+                    >
+                      <Info className="h-3.5 w-3.5" /> Note
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => insertMarkdown("> [!WARNING] ", "\n")}
+                      title="Warning Box"
+                      className="h-8 px-2 text-[11px] text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" /> Warning
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Editor Workspace Pane */}
+              <CardContent className="p-0">
+                {editorTab === "write" ? (
+                  <div className="relative">
+                    <textarea
+                      ref={contentTextareaRef}
+                      required
+                      rows={18}
+                      placeholder="Write your article paragraphs here...&#10;&#10;Formatting Tips:&#10;• Use ## for Section Titles&#10;• Use ### for Sub-headings&#10;• Use - for bullet lists&#10;• Use > [!TIP] for helpful tip callout boxes&#10;• Insert photos easily from the Photo Gallery below"
+                      value={formData.content}
+                      onChange={(e) =>
+                        setFormData({ ...formData, content: e.target.value })
+                      }
+                      className="w-full p-5 bg-background font-mono text-sm leading-relaxed text-foreground resize-y focus:outline-none focus:ring-0 border-0"
+                    />
+
+                    {/* Word count & Read Time Footer */}
+                    <div className="px-5 py-2.5 border-t border-border/60 bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <span>
+                          <strong className="text-foreground">{wordCount}</strong> words
+                        </span>
+                        <span>•</span>
+                        <span>
+                          ~
+                          <strong className="text-foreground">
+                            {autoEstimatedReadTime}
+                          </strong>{" "}
+                          min read
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono opacity-80">
+                        Markdown Supported
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* LIVE PREVIEW PANE */
+                  <div className="p-6 bg-background space-y-6 min-h-[450px]">
+                    {/* Preview Cover Photo */}
+                    {formData.coverImage && (
+                      <div className="rounded-xl overflow-hidden border border-border max-h-72">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={formData.coverImage}
+                          alt="Cover preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {/* Preview Article Header */}
+                    <div className="space-y-2 border-b border-border/60 pb-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {formData.category}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {formData.readTimeMinutes} min read
+                        </span>
+                      </div>
+                      <h1 className="text-2xl sm:text-3xl font-black text-foreground">
+                        {formData.title || "Untitled Article"}
+                      </h1>
+                      <p className="text-sm text-muted-foreground italic">
+                        {formData.excerpt || "No summary provided yet."}
+                      </p>
+                    </div>
+
+                    {/* Rendered Markdown Body */}
+                    <div className="space-y-4 text-foreground/90 text-sm leading-relaxed">
+                      {formData.content ? (
+                        formData.content.split("\n\n").map((para, i) => {
+                          const trimmed = para.trim()
+
+                          // Image ![caption](url)
+                          const imgMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/)
+                          if (imgMatch) {
+                            return (
+                              <figure
+                                key={i}
+                                className="my-4 rounded-xl overflow-hidden border border-border bg-muted/20"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={imgMatch[2]}
+                                  alt={imgMatch[1]}
+                                  className="w-full max-h-80 object-cover"
+                                />
+                                {imgMatch[1] && (
+                                  <figcaption className="text-center text-xs text-muted-foreground p-2 italic">
+                                    {imgMatch[1]}
+                                  </figcaption>
+                                )}
+                              </figure>
+                            )
+                          }
+
+                          // Heading 2
+                          if (trimmed.startsWith("## ")) {
+                            return (
+                              <h2
+                                key={i}
+                                className="text-xl font-bold text-foreground pt-4 pb-1 border-b border-border/40"
+                              >
+                                {trimmed.replace("## ", "")}
+                              </h2>
+                            )
+                          }
+
+                          // Heading 3
+                          if (trimmed.startsWith("### ")) {
+                            return (
+                              <h3
+                                key={i}
+                                className="text-base font-bold text-foreground pt-2"
+                              >
+                                {trimmed.replace("### ", "")}
+                              </h3>
+                            )
+                          }
+
+                          // Callout: Pro Tip
+                          if (trimmed.startsWith("> [!TIP]")) {
+                            return (
+                              <div
+                                key={i}
+                                className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 text-foreground space-y-1"
+                              >
+                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase">
+                                  <Lightbulb className="h-4 w-4" /> Pro Tip
+                                </div>
+                                <p className="text-xs">
+                                  {trimmed.replace("> [!TIP]", "").trim()}
+                                </p>
+                              </div>
+                            )
+                          }
+
+                          // Callout: Note
+                          if (trimmed.startsWith("> [!NOTE]")) {
+                            return (
+                              <div
+                                key={i}
+                                className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 text-foreground space-y-1"
+                              >
+                                <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold text-xs uppercase">
+                                  <Info className="h-4 w-4" /> Note
+                                </div>
+                                <p className="text-xs">
+                                  {trimmed.replace("> [!NOTE]", "").trim()}
+                                </p>
+                              </div>
+                            )
+                          }
+
+                          // Callout: Warning
+                          if (
+                            trimmed.startsWith("> [!WARNING]") ||
+                            trimmed.startsWith("> [!CAUTION]")
+                          ) {
+                            return (
+                              <div
+                                key={i}
+                                className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 text-foreground space-y-1"
+                              >
+                                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase">
+                                  <AlertTriangle className="h-4 w-4" /> Warning
+                                </div>
+                                <p className="text-xs">
+                                  {trimmed
+                                    .replace(/> \[(?:!WARNING|!CAUTION)\]/, "")
+                                    .trim()}
+                                </p>
+                              </div>
+                            )
+                          }
+
+                          // Blockquote
+                          if (trimmed.startsWith("> ")) {
+                            return (
+                              <blockquote
+                                key={i}
+                                className="border-l-4 border-gas-500 bg-gas-500/5 p-3 rounded-r-lg italic text-xs"
+                              >
+                                {trimmed.replace(/^>\s*/, "")}
+                              </blockquote>
+                            )
+                          }
+
+                          // Bullet list
+                          if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+                            const items = trimmed
+                              .split("\n")
+                              .filter((l) => l.trim().startsWith("- ") || l.trim().startsWith("* "))
+                            return (
+                              <ul key={i} className="list-disc pl-5 space-y-1 text-xs">
+                                {items.map((it, idx) => (
+                                  <li key={idx}>
+                                    {it.replace(/^[-*]\s*/, "")}
+                                  </li>
+                                ))}
+                              </ul>
+                            )
+                          }
+
+                          return (
+                            <p key={i} className="leading-relaxed">
+                              {trimmed}
+                            </p>
+                          )
+                        })
+                      ) : (
+                        <div className="text-center py-12 text-muted-foreground text-xs italic">
+                          Write paragraphs in the Write tab to see the live rendered preview here.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Multi-Image Uploader Studio */}
+            <MultiImageUploader
+              images={formData.images}
+              coverImage={formData.coverImage}
+              onChange={(imgs) => setFormData({ ...formData, images: imgs })}
+              onSetCoverImage={(cover) =>
+                setFormData({ ...formData, coverImage: cover })
+              }
+              onInsertMarkdown={(snippet) => insertMarkdown("\n" + snippet + "\n")}
+            />
+          </div>
+
+          {/* RIGHT COLUMN: Sidebar Controls & Settings (4 Cols) */}
+          <div className="lg:col-span-4 space-y-5">
+            {/* Publishing Control Card */}
+            <Card className="border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Publishing &amp; Status
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Control article availability and visibility.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-3 rounded-xl bg-muted/40 border border-border flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isPublished}
+                      onChange={(e) =>
+                        setFormData({ ...formData, isPublished: e.target.checked })
+                      }
+                      className="rounded border-border text-gas-600 focus:ring-gas-500 h-4 w-4"
+                    />
+                    <span>{formData.isPublished ? "Published (Live)" : "Draft (Hidden)"}</span>
+                  </label>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] ${
+                      formData.isPublished
+                        ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
+                        : "text-amber-500 border-amber-500/30 bg-amber-500/10"
+                    }`}
+                  >
+                    {formData.isPublished ? "Live" : "Draft"}
+                  </Badge>
+                </div>
+
+                {/* If editing, show stats summary */}
+                {editorMode === "edit" && editingPostOriginal && (
+                  <div className="grid grid-cols-3 gap-2 text-center p-2.5 rounded-lg bg-muted/20 border border-border text-xs">
+                    <div>
+                      <p className="text-muted-foreground text-[10px]">Reads</p>
+                      <p className="font-bold text-foreground">{editingPostOriginal.viewCount}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-[10px]">Claps</p>
+                      <p className="font-bold text-foreground">👏 {editingPostOriginal.clapCount || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-[10px]">Shares</p>
+                      <p className="font-bold text-foreground">{editingPostOriginal.shareCount}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-1 flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleSaveArticle()}
+                    className="w-full bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-10 gap-2 shadow-md shadow-gas-600/20"
+                  >
+                    <Save className="h-4 w-4" />
+                    {loading
+                      ? "Saving Article..."
+                      : editorMode === "create"
+                      ? "Publish Article"
+                      : "Save Changes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseEditor}
+                    className="w-full text-xs h-9"
+                  >
+                    Cancel &amp; Discard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Category & Read Time Card */}
+            <Card className="border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Article Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Topic Category
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    className="w-full h-9 px-3 rounded-lg bg-background border border-border text-xs text-foreground focus:ring-1 focus:ring-gas-500"
+                  >
+                    <option value="Affiliate Strategy">Affiliate Strategy</option>
+                    <option value="V2V Philosophy">V2V Philosophy</option>
+                    <option value="Growth & Traffic">Growth & Traffic</option>
+                    <option value="Product Updates">Product Updates</option>
+                    <option value="Case Studies">Case Studies</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <label className="font-semibold text-foreground">
+                      Reading Time (Minutes)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          readTimeMinutes: autoEstimatedReadTime,
+                        })
+                      }
+                      className="text-[10px] text-gas-600 hover:underline"
+                    >
+                      Auto: {autoEstimatedReadTime}m
+                    </button>
+                  </div>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={formData.readTimeMinutes}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        readTimeMinutes: parseInt(e.target.value, 10) || 5,
+                      })
+                    }
+                    className="h-9 text-xs"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* SEO Summary Card */}
+            <Card className="border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-bold text-foreground">
+                    Summary &amp; SEO Excerpt
+                  </CardTitle>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    {formData.excerpt.length} chars
+                  </span>
+                </div>
+                <CardDescription className="text-xs">
+                  1-2 sentences displayed on Google, social media share cards, and article preview cards.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="A concise summary of the article's core insight..."
+                  value={formData.excerpt}
+                  onChange={(e) =>
+                    setFormData({ ...formData, excerpt: e.target.value })
+                  }
+                  className="w-full p-3 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Social Discussion Links Card */}
+            <Card className="border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSocialInputs(!showSocialInputs)}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                      <MessageSquare className="h-4 w-4 text-gas-500" />
+                      Social Media Links
+                    </CardTitle>
+                    <CardDescription className="text-[11px] mt-0.5">
+                      Connect live discussion posts ({showSocialInputs ? "Click to collapse" : "Click to expand"})
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">
+                    {showSocialInputs ? "Hide" : "Expand"}
+                  </Badge>
+                </button>
+              </CardHeader>
+              {showSocialInputs && (
+                <CardContent className="space-y-3 pt-0 border-t border-border/50 text-xs">
+                  <div className="space-y-1 pt-3">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                      <Twitter className="h-3.5 w-3.5 text-sky-500" /> X (Twitter) Post URL
+                    </label>
+                    <Input
+                      type="url"
+                      placeholder="https://x.com/username/status/..."
+                      value={formData.socialLinks.twitter}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          socialLinks: {
+                            ...formData.socialLinks,
+                            twitter: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8 text-xs bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                      <Linkedin className="h-3.5 w-3.5 text-blue-600" /> LinkedIn Post URL
+                    </label>
+                    <Input
+                      type="url"
+                      placeholder="https://www.linkedin.com/feed/update/..."
+                      value={formData.socialLinks.linkedin}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          socialLinks: {
+                            ...formData.socialLinks,
+                            linkedin: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8 text-xs bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                      <Send className="h-3.5 w-3.5 text-sky-400" /> Telegram Discussion URL
+                    </label>
+                    <Input
+                      type="url"
+                      placeholder="https://t.me/channel/123"
+                      value={formData.socialLinks.telegram}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          socialLinks: {
+                            ...formData.socialLinks,
+                            telegram: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8 text-xs bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                      <MessageCircle className="h-3.5 w-3.5 text-emerald-500" /> WhatsApp Community Link
+                    </label>
+                    <Input
+                      type="url"
+                      placeholder="https://chat.whatsapp.com/..."
+                      value={formData.socialLinks.whatsapp}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          socialLinks: {
+                            ...formData.socialLinks,
+                            whatsapp: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8 text-xs bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                      <Youtube className="h-3.5 w-3.5 text-rose-500" /> YouTube Video URL
+                    </label>
+                    <Input
+                      type="url"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      value={formData.socialLinks.youtube}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          socialLinks: {
+                            ...formData.socialLinks,
+                            youtube: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8 text-xs bg-background"
+                    />
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ============================================================
+  // RENDER: ARTICLES DIRECTORY (List View)
+  // ============================================================
   return (
     <div className="space-y-8">
-      {/* Action Bar */}
+      {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search articles..."
+            placeholder="Search articles by title or category..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 h-9 text-xs"
@@ -314,510 +1092,16 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         </div>
 
         <Button
-          onClick={() => {
-            setIsCreating(!isCreating)
-            setEditingPost(null)
-          }}
+          onClick={handleStartCreate}
           size="sm"
           className="bg-gas-600 hover:bg-gas-700 text-white font-semibold gap-1.5 text-xs h-9 ml-auto shadow-sm"
         >
           <Plus className="h-4 w-4" />
-          {isCreating ? "Cancel" : "Create New Article"}
+          Create New Article
         </Button>
       </div>
 
-      {/* Creation Modal / Form */}
-      {isCreating && (
-        <Card className="border-gas-500/30 bg-card/90 shadow-2xl">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-gas-500" /> Write New Article
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Publish helpful guides with multiple photos and share them directly across your social media channels.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreatePost} className="space-y-5">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Article Title *</label>
-                <Input
-                  required
-                  placeholder="e.g. 5 Strategies to Scale Direct Commissions in 2026"
-                  value={newPost.title}
-                  onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                  className="h-10 text-sm font-semibold"
-                />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Category</label>
-                  <select
-                    value={newPost.category}
-                    onChange={(e) => setNewPost({ ...newPost, category: e.target.value })}
-                    className="w-full h-10 px-3 rounded-md bg-background border border-border text-xs text-foreground"
-                  >
-                    <option value="Affiliate Strategy">Affiliate Strategy</option>
-                    <option value="V2V Philosophy">V2V Philosophy</option>
-                    <option value="Growth & Traffic">Growth & Traffic</option>
-                    <option value="Product Updates">Product Updates</option>
-                    <option value="Case Studies">Case Studies</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Read Time (Minutes)</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={newPost.readTimeMinutes}
-                    onChange={(e) =>
-                      setNewPost({
-                        ...newPost,
-                        readTimeMinutes: parseInt(e.target.value, 10) || 5,
-                      })
-                    }
-                    className="h-10 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Summary (Brief description for search and social sharing) *
-                </label>
-                <textarea
-                  required
-                  rows={2}
-                  placeholder="Brief 1-2 sentence summary displayed in social cards and search results..."
-                  value={newPost.excerpt}
-                  onChange={(e) => setNewPost({ ...newPost, excerpt: e.target.value })}
-                  className="w-full p-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
-                />
-              </div>
-
-              {/* Multi-Image Uploader Studio */}
-              <MultiImageUploader
-                images={newPost.images}
-                coverImage={newPost.coverImage}
-                onChange={(imgs) => setNewPost({ ...newPost, images: imgs })}
-                onSetCoverImage={(cover) => setNewPost({ ...newPost, coverImage: cover })}
-                onInsertMarkdown={(snippet) =>
-                  setNewPost({ ...newPost, content: newPost.content + "\n" + snippet })
-                }
-              />
-
-              {/* Content Editor */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Content (Markdown supported: ## Headings, lists, quotes, images) *
-                </label>
-                <textarea
-                  required
-                  rows={10}
-                  placeholder="Write article paragraphs... Use ## for headings and - for bullet points. You can also use > [!TIP] or > [!NOTE] for callout boxes."
-                  value={newPost.content}
-                  onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                  className="w-full p-3 rounded-md bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
-                />
-              </div>
-
-              {/* Expandable Social Links Section */}
-              <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setShowSocialInputs(!showSocialInputs)}
-                  className="w-full flex items-center justify-between text-xs font-bold text-foreground"
-                >
-                  <span className="flex items-center gap-1.5 text-gas-600 dark:text-gas-400">
-                    <MessageSquare className="h-4 w-4" />
-                    Add Social Media Discussion Links ({showSocialInputs ? "Hide" : "Expand"})
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    Connect X thread, LinkedIn post, Telegram, WhatsApp chat
-                  </span>
-                </button>
-
-                {showSocialInputs && (
-                  <div className="pt-3 border-t border-border/50 grid sm:grid-cols-2 gap-3 text-xs">
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Twitter className="h-3 w-3 text-sky-500" /> X (Twitter) Post URL
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://x.com/username/status/..."
-                        value={newPost.socialLinks.twitter}
-                        onChange={(e) =>
-                          setNewPost({
-                            ...newPost,
-                            socialLinks: { ...newPost.socialLinks, twitter: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Linkedin className="h-3 w-3 text-blue-600" /> LinkedIn Discussion URL
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://www.linkedin.com/feed/update/..."
-                        value={newPost.socialLinks.linkedin}
-                        onChange={(e) =>
-                          setNewPost({
-                            ...newPost,
-                            socialLinks: { ...newPost.socialLinks, linkedin: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Send className="h-3 w-3 text-sky-400" /> Telegram Discussion Link
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://t.me/channel/123"
-                        value={newPost.socialLinks.telegram}
-                        onChange={(e) =>
-                          setNewPost({
-                            ...newPost,
-                            socialLinks: { ...newPost.socialLinks, telegram: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <MessageCircle className="h-3 w-3 text-emerald-500" /> WhatsApp Community Link
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://chat.whatsapp.com/..."
-                        value={newPost.socialLinks.whatsapp}
-                        onChange={(e) =>
-                          setNewPost({
-                            ...newPost,
-                            socialLinks: { ...newPost.socialLinks, whatsapp: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Youtube className="h-3 w-3 text-rose-500" /> YouTube Video Walkthrough URL
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={newPost.socialLinks.youtube}
-                        onChange={(e) =>
-                          setNewPost({
-                            ...newPost,
-                            socialLinks: { ...newPost.socialLinks, youtube: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newPost.isPublished}
-                    onChange={(e) =>
-                      setNewPost({ ...newPost, isPublished: e.target.checked })
-                    }
-                    className="rounded border-border text-gas-600 focus:ring-gas-500 h-4 w-4"
-                  />
-                  Publish immediately (Visible to public)
-                </label>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-10 px-6 shadow-md shadow-gas-600/20"
-                >
-                  {loading ? "Publishing..." : "Publish Article"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Edit Article Modal / Card */}
-      {editingPost && (
-        <Card className="border-gas-500/40 bg-card shadow-2xl ring-1 ring-gas-500/20">
-          <CardHeader className="flex flex-row items-start justify-between pb-3">
-            <div>
-              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Edit className="h-4 w-4 text-gas-500" /> Edit Article
-              </CardTitle>
-              <CardDescription className="text-xs mt-1">
-                Editing: &quot;{editingPost.title}&quot;
-              </CardDescription>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleCancelEdit}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleUpdatePost} className="space-y-5">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Article Title *</label>
-                <Input
-                  required
-                  placeholder="Article title..."
-                  value={editForm.title}
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                  className="h-10 text-sm font-semibold"
-                />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Category</label>
-                  <select
-                    value={editForm.category}
-                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                    className="w-full h-10 px-3 rounded-md bg-background border border-border text-xs text-foreground"
-                  >
-                    <option value="Affiliate Strategy">Affiliate Strategy</option>
-                    <option value="V2V Philosophy">V2V Philosophy</option>
-                    <option value="Growth & Traffic">Growth & Traffic</option>
-                    <option value="Product Updates">Product Updates</option>
-                    <option value="Case Studies">Case Studies</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Read Time (Minutes)</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={editForm.readTimeMinutes}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        readTimeMinutes: parseInt(e.target.value, 10) || 5,
-                      })
-                    }
-                    className="h-10 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Summary (Brief description for search and social sharing) *
-                </label>
-                <textarea
-                  required
-                  rows={2}
-                  placeholder="Brief 1-2 sentence summary displayed in social cards and search results..."
-                  value={editForm.excerpt}
-                  onChange={(e) => setEditForm({ ...editForm, excerpt: e.target.value })}
-                  className="w-full p-3 rounded-md bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
-                />
-              </div>
-
-              {/* Multi-Image Uploader Studio */}
-              <MultiImageUploader
-                images={editForm.images}
-                coverImage={editForm.coverImage}
-                onChange={(imgs) => setEditForm({ ...editForm, images: imgs })}
-                onSetCoverImage={(cover) => setEditForm({ ...editForm, coverImage: cover })}
-                onInsertMarkdown={(snippet) =>
-                  setEditForm({ ...editForm, content: editForm.content + "\n" + snippet })
-                }
-              />
-
-              {/* Content Editor */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Content (Markdown supported: ## Headings, lists, quotes, images) *
-                </label>
-                <textarea
-                  required
-                  rows={10}
-                  placeholder="Write article paragraphs... Use ## for headings and - for bullet points."
-                  value={editForm.content}
-                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                  className="w-full p-3 rounded-md bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-gas-500 leading-relaxed"
-                />
-              </div>
-
-              {/* Expandable Social Links Section */}
-              <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setShowEditSocialInputs(!showEditSocialInputs)}
-                  className="w-full flex items-center justify-between text-xs font-bold text-foreground"
-                >
-                  <span className="flex items-center gap-1.5 text-gas-600 dark:text-gas-400">
-                    <MessageSquare className="h-4 w-4" />
-                    Social Media Discussion Links ({showEditSocialInputs ? "Hide" : "Expand"})
-                  </span>
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    Connect X thread, LinkedIn post, Telegram, WhatsApp chat
-                  </span>
-                </button>
-
-                {showEditSocialInputs && (
-                  <div className="pt-3 border-t border-border/50 grid sm:grid-cols-2 gap-3 text-xs">
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Twitter className="h-3 w-3 text-sky-500" /> X (Twitter) Post URL
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://x.com/username/status/..."
-                        value={editForm.socialLinks.twitter}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            socialLinks: { ...editForm.socialLinks, twitter: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Linkedin className="h-3 w-3 text-blue-600" /> LinkedIn Discussion URL
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://www.linkedin.com/feed/update/..."
-                        value={editForm.socialLinks.linkedin}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            socialLinks: { ...editForm.socialLinks, linkedin: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Send className="h-3 w-3 text-sky-400" /> Telegram Discussion Link
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://t.me/channel/123"
-                        value={editForm.socialLinks.telegram}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            socialLinks: { ...editForm.socialLinks, telegram: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <MessageCircle className="h-3 w-3 text-emerald-500" /> WhatsApp Community Link
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://chat.whatsapp.com/..."
-                        value={editForm.socialLinks.whatsapp}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            socialLinks: { ...editForm.socialLinks, whatsapp: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                        <Youtube className="h-3 w-3 text-rose-500" /> YouTube Video Walkthrough URL
-                      </label>
-                      <Input
-                        type="url"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={editForm.socialLinks.youtube}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            socialLinks: { ...editForm.socialLinks, youtube: e.target.value },
-                          })
-                        }
-                        className="h-8 text-xs bg-background/80"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isPublished}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, isPublished: e.target.checked })
-                    }
-                    className="rounded border-border text-gas-600 focus:ring-gas-500 h-4 w-4"
-                  />
-                  Published live (Visible to public)
-                </label>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCancelEdit}
-                    className="text-xs h-10 px-4"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="bg-gas-600 hover:bg-gas-700 text-white font-bold text-xs h-10 px-6 shadow-md shadow-gas-600/20"
-                  >
-                    {loading ? "Saving Changes..." : "Save Changes"}
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Articles Table */}
+      {/* Articles Directory Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -906,7 +1190,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => openBroadcastStudio(post)}
+                      onClick={() => openShareModal(post)}
                       className="h-7 px-2.5 text-[11px] font-bold border-gas-500/30 text-gas-600 hover:bg-gas-500/10 gap-1.5 shadow-sm"
                       title="Share to Social Media in 1 Click"
                     >
@@ -917,7 +1201,12 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
 
                   <td className="px-4 py-3 text-right whitespace-nowrap space-x-1">
                     <Link href={`/blog/${post.slug}`} target="_blank">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="Preview Article">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                        title="Preview Live Article"
+                      >
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Button>
                     </Link>
@@ -945,7 +1234,7 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
 
               {filteredPosts.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={6} className="text-center py-12 text-muted-foreground">
                     No articles found. Click &quot;Create New Article&quot; to write your first post.
                   </td>
                 </tr>
@@ -955,23 +1244,23 @@ export function AdminBlogsClient({ initialPosts }: AdminBlogsClientProps) {
         </div>
       </div>
 
-      {/* 1-Click Social Broadcast Modal */}
+      {/* 1-Click Social Share Modal */}
       <BlogBroadcastModal
         post={
-          broadcastPost
+          shareModalPost
             ? {
-                id: broadcastPost.id,
-                title: broadcastPost.title,
-                slug: broadcastPost.slug,
-                excerpt: broadcastPost.excerpt,
-                coverImage: broadcastPost.coverImage,
+                id: shareModalPost.id,
+                title: shareModalPost.title,
+                slug: shareModalPost.slug,
+                excerpt: shareModalPost.excerpt,
+                coverImage: shareModalPost.coverImage,
                 tags: [],
-                category: broadcastPost.category,
+                category: shareModalPost.category,
               }
             : null
         }
-        isOpen={isBroadcastModalOpen}
-        onClose={() => setIsBroadcastModalOpen(false)}
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
     </div>
   )
